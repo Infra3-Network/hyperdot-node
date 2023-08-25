@@ -1,0 +1,46 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Compiled Go packages
+*.6
+*.8
+*.exe
+*.test
+*.prof
+*.out
+
+# Compiled cgo files
+_cgo_*.c
+_cgo_*.h
+_cgo_*.go
+
+# Generated files
+_version.go
+
+# Dependency directories
+vendor/
+
+# go modules cache
+/go.sum
+vendor
+
+# Testing
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# JetBrains GoLand
+.idea/
+
+# vscode
+.vscode/
+
+# Sublime Text
+.sublime-*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
