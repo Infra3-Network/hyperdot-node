@@ -1,10 +1,10 @@
 package common
 
 type Polkaholic struct {
-	ApiKey  string
-	BaseUrl string
+	ApiKey  string `json:"apiKey"`
+	BaseUrl string `json:"baseUrl"`
 }
 
 type Config struct {
-	Pokaholic Polkaholic
+	Polkaholic Polkaholic `json:"polkaholic"`
 }

@@ -43,13 +43,17 @@ func (f *FetchParaChain) Do() ([]common.ParaChainData, error) {
 }
 
 func (f *FetchParaChain) do() ([]common.ParaChainData, error) {
-	url := fmt.Sprintf("%s/chains?limit=-1", f.cfg.Pokaholic.BaseUrl)
+	return FetchParaChainData(&f.cfg.Polkaholic)
+}
+
+func FetchParaChainData(cfg *common.Polkaholic) ([]common.ParaChainData, error) {
+	url := fmt.Sprintf("%s/chains?limit=-1", cfg.BaseUrl)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", f.cfg.Pokaholic.ApiKey)
+	req.Header.Add("Authorization", cfg.ApiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

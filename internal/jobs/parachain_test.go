@@ -9,7 +9,7 @@ import (
 
 func TestParaChainJob(t *testing.T) {
 	cfg := common.Config{
-		Pokaholic: common.Polkaholic{
+		Polkaholic: common.Polkaholic{
 			ApiKey:  "aaed8e0afefcf294e146167fbca9814a",
 			BaseUrl: "https://api.polkaholic.io",
 		},

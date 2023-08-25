@@ -1,25 +1,9 @@
-// Copyright 2019 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// [START bigquery_simple_app_all]
-
-// Command simpleapp queries the Stack Overflow public dataset in Google BigQuery.
 package main
 
-// [START bigquery_simple_app_deps]
 import (
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -27,34 +11,88 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
+	"infra-3.xyz/hyperdot-node/internal/common"
+	"infra-3.xyz/hyperdot-node/internal/jobs"
 )
 
-// [END bigquery_simple_app_deps]
+var (
+	config = flag.String("config", "config.json", "Path to config file")
+)
+
+func initialSystemConfig() *common.Config {
+	cfg := ""
+	if config == nil {
+		cfg = os.Getenv("HYPETDOT_NODE_CONFIG")
+	} else {
+		cfg = *config
+	}
+
+	if cfg == "" {
+		log.Fatalf("Config file not found")
+	}
+
+	configFile, err := os.Open(cfg)
+	if err != nil {
+		log.Fatalf("Error opening config file: %v", err)
+	}
+	defer configFile.Close()
+
+	data, err := io.ReadAll(configFile)
+	if err != nil {
+		log.Fatalf("Error reading config file: %v", err)
+	}
+
+	config := new(common.Config)
+	if err := json.Unmarshal(data, config); err != nil {
+		log.Fatalf("Error unmarshalling config JSON: %v", err)
+	}
+
+	return config
+}
+
+func initialGlobalData(cfg *common.Config) error {
+	// Fetch parachain data and initialize global cache
+	if chains, err := jobs.FetchParaChainData(&cfg.Polkaholic); err != nil {
+		return err
+	} else {
+		common.GlobalParaChainCache = common.NewParaChainMap()
+		common.GlobalParaChainCache.From(chains)
+	}
+
+	return nil
+}
 
 func main() {
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		fmt.Println("GOOGLE_CLOUD_PROJECT environment variable must be set.")
-		os.Exit(1)
+	flag.Parse()
+
+	cfg := initialSystemConfig()
+	if err := initialGlobalData(cfg); err != nil {
+		log.Fatalf("Error initial global data: %v", err)
 	}
 
-	// [START bigquery_simple_app_client]
-	ctx := context.Background()
+	// projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	// if projectID == "" {
+	// 	fmt.Println("GOOGLE_CLOUD_PROJECT environment variable must be set.")
+	// 	os.Exit(1)
+	// }
 
-	client, err := bigquery.NewClient(ctx, projectID)
-	if err != nil {
-		log.Fatalf("bigquery.NewClient: %v", err)
-	}
-	defer client.Close()
-	// [END bigquery_simple_app_client]
+	// // [START bigquery_simple_app_client]
+	// ctx := context.Background()
 
-	rows, err := query(ctx, client)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := printResults(os.Stdout, rows); err != nil {
-		log.Fatal(err)
-	}
+	// client, err := bigquery.NewClient(ctx, projectID)
+	// if err != nil {
+	// 	log.Fatalf("bigquery.NewClient: %v", err)
+	// }
+	// defer client.Close()
+	// // [END bigquery_simple_app_client]
+
+	// rows, err := query(ctx, client)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// if err := printResults(os.Stdout, rows); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 
 // query returns a row iterator suitable for reading query results.

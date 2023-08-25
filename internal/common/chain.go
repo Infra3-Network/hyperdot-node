@@ -17,11 +17,27 @@ type ParaChainMap struct {
 	lock *sync.RWMutex
 }
 
-var GlobalParaChainMap *ParaChainMap
+var GlobalParaChainCache *ParaChainMap
 
-func init() {
-	GlobalParaChainMap = &ParaChainMap{
+func NewParaChainMap() *ParaChainMap {
+	return &ParaChainMap{
 		data: make(map[int]ParaChainData),
 		lock: new(sync.RWMutex),
 	}
+}
+
+func (p *ParaChainMap) From(chains []ParaChainData) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, chain := range chains {
+		p.data[chain.ChainID] = chain
+	}
+}
+
+func (p *ParaChainMap) GetChains() map[int]ParaChainData {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.data
 }
