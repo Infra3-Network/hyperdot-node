@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"infra-3.xyz/hyperdot-node/internal/common"
 )
 
 const (
@@ -26,22 +27,28 @@ type Router interface {
 
 type RouterBuilder struct {
 	enableQuery bool
+	cfg         *common.Config
 }
 
-func NewRouterBuilder() *RouterBuilder {
+func NewRouterBuilder(cfg *common.Config) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
+		cfg:         cfg,
 	}
 }
 
-func (r *RouterBuilder) Build() *gin.Engine {
+func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	engine := gin.Default()
 	versionUrl := fmt.Sprintf("%s/%s", BASE, CURRENT_VERSION)
 	router := engine.Group(versionUrl)
 	{
 		var svcs []Router
 		if r.enableQuery {
-			svcs = append(svcs, NewQueryService())
+			svc, err := NewQueryService(r.cfg)
+			if err != nil {
+				return nil, err
+			}
+			svcs = append(svcs, svc)
 		}
 
 		for _, svc := range svcs {
@@ -51,5 +58,5 @@ func (r *RouterBuilder) Build() *gin.Engine {
 		}
 	}
 
-	return engine
+	return engine, nil
 }

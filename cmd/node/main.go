@@ -71,9 +71,13 @@ func main() {
 		log.Fatalf("Error initial global data: %v", err)
 	}
 
-	apiserver := apis.NewApiServer(cfg)
+	apiserver, err := apis.NewApiServer(cfg)
+	if err != nil {
+		log.Fatalf("Error creating apiserver: %v", err)
+	}
+
 	if err := apiserver.Start(); err != nil {
-		log.Fatalf("Error starting api server: %v", err)
+		log.Fatalf("Error starting apiserver: %v", err)
 	}
 
 	// projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")

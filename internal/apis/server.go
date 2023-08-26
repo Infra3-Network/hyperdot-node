@@ -16,15 +16,18 @@ type ApiServer struct {
 	srv *http.Server
 }
 
-func NewApiServer(cfg *common.Config) *ApiServer {
-	engine := NewRouterBuilder().Build()
+func NewApiServer(cfg *common.Config) (*ApiServer, error) {
+	engine, err := NewRouterBuilder(cfg).Build()
+	if err != nil {
+		return nil, err
+	}
 	return &ApiServer{
 		cfg: *cfg,
 		srv: &http.Server{
 			Addr:    cfg.ApiServer.Addr,
 			Handler: engine,
 		},
-	}
+	}, nil
 }
 
 func (s *ApiServer) Start() error {

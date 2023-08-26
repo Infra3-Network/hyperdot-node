@@ -5,5 +5,8 @@
     },
     "apiserver": {
         "addr": ":3030"
+    },
+    "bigquery": {
+        "projectId": "substrate-etl"
     }
 }

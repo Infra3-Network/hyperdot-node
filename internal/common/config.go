@@ -9,7 +9,12 @@ type ApiServerConfig struct {
 	Addr string `json:"addr"`
 }
 
+type BigQueryConfig struct {
+	ProjectId string `json:"projectId"`
+}
+
 type Config struct {
 	Polkaholic PolkaholicConfig `json:"polkaholic"`
 	ApiServer  ApiServerConfig  `json:"apiServer"`
+	Bigquery   BigQueryConfig   `json:"bigquery"`
 }
