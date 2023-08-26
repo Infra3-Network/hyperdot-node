@@ -2,5 +2,8 @@
     "polkaholic": {
         "apiKey": "aaed8e0afefcf294e146167fbca9814a",
         "baseUrl": "https://api.polkaholic.io"
+    },
+    "apiserver": {
+        "addr": ":3030"
     }
 }

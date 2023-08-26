@@ -46,7 +46,7 @@ func (f *FetchParaChain) do() ([]common.ParaChainData, error) {
 	return FetchParaChainData(&f.cfg.Polkaholic)
 }
 
-func FetchParaChainData(cfg *common.Polkaholic) ([]common.ParaChainData, error) {
+func FetchParaChainData(cfg *common.PolkaholicConfig) ([]common.ParaChainData, error) {
 	url := fmt.Sprintf("%s/chains?limit=-1", cfg.BaseUrl)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
+	"infra-3.xyz/hyperdot-node/internal/apis"
 	"infra-3.xyz/hyperdot-node/internal/common"
 	"infra-3.xyz/hyperdot-node/internal/jobs"
 )
@@ -68,6 +69,11 @@ func main() {
 	cfg := initialSystemConfig()
 	if err := initialGlobalData(cfg); err != nil {
 		log.Fatalf("Error initial global data: %v", err)
+	}
+
+	apiserver := apis.NewApiServer(cfg)
+	if err := apiserver.Start(); err != nil {
+		log.Fatalf("Error starting api server: %v", err)
 	}
 
 	// projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
