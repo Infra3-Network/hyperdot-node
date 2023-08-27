@@ -1,5 +1,7 @@
 package apis
 
+import "infra-3.xyz/hyperdot-node/internal/datamodel"
+
 const (
 	_                = iota
 	Ok               // Response code for success
@@ -28,5 +30,5 @@ func ResponseOkWithMsg(msg string) BaseResponse {
 
 type ListEngineResponse struct {
 	BaseResponse
-	Engines []EngineModel `json:"engines"`
+	BigQuery *datamodel.BigQueryDataEngine `json:"bigquery"`
 }

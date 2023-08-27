@@ -5,6 +5,8 @@ go 1.21.0
 require (
 	cloud.google.com/go/bigquery v1.50.0
 	github.com/gin-gonic/gin v1.9.1
+	github.com/jasonlvhit/gocron v0.0.1
+	go.etcd.io/bbolt v1.3.7
 	google.golang.org/api v0.126.0
 )
 
@@ -51,7 +53,6 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
-	go.etcd.io/bbolt v1.3.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/arch v0.4.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect

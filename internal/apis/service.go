@@ -1,7 +1,10 @@
 package apis
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
+	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/common"
 )
@@ -12,7 +15,8 @@ type QueryService struct {
 }
 
 func NewQueryService(cfg *common.Config) (*QueryService, error) {
-	bigqueryClient, err := clients.NewSimpleBigQueryClient(cfg)
+	ctx := context.Background()
+	bigqueryClient, err := clients.NewSimpleBigQueryClient(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -26,12 +30,7 @@ func (q *QueryService) ListEnginesHandle() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.JSON(200, ListEngineResponse{
 			BaseResponse: ResponseOk(),
-			Engines: []EngineModel{
-				{
-					Name:   "bigquery",
-					Chains: common.GlobalParaChainCache.GetChains(),
-				},
-			},
+			BigQuery:     cache.GlobalDataEngine.GetBigQuery(),
 		})
 	}
 }
