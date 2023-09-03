@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"infra-3.xyz/hyperdot-node/internal/datamodel"
 	"io"
 	"log"
 	"os"
+
+	"infra-3.xyz/hyperdot-node/internal/store"
 
 	"infra-3.xyz/hyperdot-node/internal/apis"
 	"infra-3.xyz/hyperdot-node/internal/cache"
@@ -50,8 +53,8 @@ func initialSystemConfig() *common.Config {
 	return config
 }
 
-func initialGlobalData(cfg *common.Config) error {
-	// Fetch parachain data and initialize global cache
+func initialGlobalData(cfg *common.Config, boltStore *store.BoltStore) error {
+	// Fetch chain metadata and initialize global cache
 	ctx := context.Background()
 	client, err := clients.NewSimpleBigQueryClient(ctx, cfg)
 	if err != nil {
@@ -60,23 +63,26 @@ func initialGlobalData(cfg *common.Config) error {
 
 	defer client.Close()
 
-	bigQueryDataEngine, err := jobs.BuildBigQueryEngine(ctx, client, &cfg.Polkaholic)
+	raw, err := jobs.BuildBigQueryEngineRawDataset(ctx, client, &cfg.Polkaholic)
 	if err != nil {
 		return err
 	}
-	cache.GlobalDataEngine.SetBigQuery(bigQueryDataEngine)
 
+	cache.GlobalDataEngine.SetDatasets("bigquery", &datamodel.QueryEngineDatasets{Raw: raw})
+	if err := boltStore.SetDatasets("bigquery", &datamodel.QueryEngineDatasets{Raw: raw}); err != nil {
+		return err
+	}
 	return nil
 }
 
-func initJobs(jm *jobs.JobManager) error {
-	if err := jm.Init(); err != nil {
+func initJobs(jobManager *jobs.JobManager, store *store.BoltStore) error {
+	if err := jobManager.Init(store); err != nil {
 		return err
 	}
 
 	go func() {
-		<-jm.Start()
-		jm.Stop()
+		<-jobManager.Start()
+		jobManager.Stop()
 	}()
 
 	return nil
@@ -86,16 +92,22 @@ func main() {
 	flag.Parse()
 
 	cfg := initialSystemConfig()
-	if err := initialGlobalData(cfg); err != nil {
+	boltStore, err := store.NewBoltStore(cfg)
+	if err != nil {
+		log.Fatalf("Error initial bolt store: %v", err)
+	}
+
+	if err := initialGlobalData(cfg, boltStore); err != nil {
 		log.Fatalf("Error initial global data: %v", err)
 	}
 
 	jobManager := jobs.NewJobManager(cfg)
-	if err := initJobs(jobManager); err != nil {
+
+	if err := initJobs(jobManager, boltStore); err != nil {
 		log.Fatalf("Error initial jobs: %v", err)
 	}
 
-	apiserver, err := apis.NewApiServer(cfg)
+	apiserver, err := apis.NewApiServer(boltStore, cfg)
 	if err != nil {
 		log.Fatalf("Error creating apiserver: %v", err)
 	}

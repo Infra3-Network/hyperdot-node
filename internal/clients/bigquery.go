@@ -12,7 +12,7 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
-type SimpleBigQueryClinet struct {
+type SimpleBigQueryClient struct {
 	bigquery *bigquery.Client
 }
 
@@ -22,17 +22,35 @@ func initBigQuery(ctx context.Context, cfg *common.BigQueryConfig) (*bigquery.Cl
 }
 
 // NewSimpleBigQueryClient creates a new simple client for bigquery
-func NewSimpleBigQueryClient(ctx context.Context, cfg *common.Config) (*SimpleBigQueryClinet, error) {
+func NewSimpleBigQueryClient(ctx context.Context, cfg *common.Config) (*SimpleBigQueryClient, error) {
 	client, err := initBigQuery(ctx, &cfg.Bigquery)
 	if err != nil {
 		return nil, err
 	}
-	return &SimpleBigQueryClinet{
+	return &SimpleBigQueryClient{
 		bigquery: client,
 	}, nil
 }
 
-func (s *SimpleBigQueryClinet) Query(ctx context.Context, q string) (*bigquery.RowIterator, error) {
+func (s *SimpleBigQueryClient) Statistics(ctx context.Context, q string) (*bigquery.JobStatistics, error) {
+	query := s.bigquery.Query(q)
+	query.DryRun = true
+	job, err := query.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status, err := job.Wait(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := status.Err(); err != nil {
+		return nil, err
+	}
+
+	return status.Statistics, nil
+}
+
+func (s *SimpleBigQueryClient) Query(ctx context.Context, q string) (*bigquery.RowIterator, error) {
 	query := s.bigquery.Query(q)
 	job, err := query.Run(ctx)
 	if err != nil {
@@ -50,7 +68,7 @@ func (s *SimpleBigQueryClinet) Query(ctx context.Context, q string) (*bigquery.R
 }
 
 // Query polkadot relaychain table schemes
-func (s *SimpleBigQueryClinet) QueryCryptoPolkadotTableScheme(ctx context.Context) ([]datamodel.Table, error) {
+func (s *SimpleBigQueryClient) QueryCryptoPolkadotTableScheme(ctx context.Context) ([]datamodel.Table, error) {
 	iter, err := s.Query(ctx, "select * from `bigquery-public-data.crypto_polkadot.AAA_tableschema`")
 	if err != nil {
 		log.Fatalf("Failed to run query: %v", err)
@@ -60,7 +78,7 @@ func (s *SimpleBigQueryClinet) QueryCryptoPolkadotTableScheme(ctx context.Contex
 }
 
 // Query kusama relaychain table schemes
-func (s *SimpleBigQueryClinet) QueryCryptoKusamaTableScheme(ctx context.Context) ([]datamodel.Table, error) {
+func (s *SimpleBigQueryClient) QueryCryptoKusamaTableScheme(ctx context.Context) ([]datamodel.Table, error) {
 	iter, err := s.Query(ctx, "select * from `bigquery-public-data.crypto_kusama.AAA_tableschema`")
 	if err != nil {
 		log.Fatalf("Failed to run query: %v", err)
@@ -98,6 +116,6 @@ func iterTable(ctx context.Context, iter *bigquery.RowIterator) ([]datamodel.Tab
 }
 
 // Close bigquery client
-func (s *SimpleBigQueryClinet) Close() error {
+func (s *SimpleBigQueryClient) Close() error {
 	return s.bigquery.Close()
 }

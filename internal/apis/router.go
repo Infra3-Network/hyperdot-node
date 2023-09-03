@@ -2,9 +2,10 @@ package apis
 
 import (
 	"fmt"
-
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"infra-3.xyz/hyperdot-node/internal/common"
+	"infra-3.xyz/hyperdot-node/internal/store"
 )
 
 const (
@@ -27,12 +28,14 @@ type Router interface {
 
 type RouterBuilder struct {
 	enableQuery bool
+	boltStore   *store.BoltStore
 	cfg         *common.Config
 }
 
-func NewRouterBuilder(cfg *common.Config) *RouterBuilder {
+func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
+		boltStore:   boltStore,
 		cfg:         cfg,
 	}
 }
@@ -40,11 +43,12 @@ func NewRouterBuilder(cfg *common.Config) *RouterBuilder {
 func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	engine := gin.Default()
 	versionUrl := fmt.Sprintf("%s/%s", BASE, CURRENT_VERSION)
+	engine.Use(cors.Default())
 	router := engine.Group(versionUrl)
 	{
 		var svcs []Router
 		if r.enableQuery {
-			svc, err := NewQueryService(r.cfg)
+			svc, err := NewQueryService(r.boltStore, r.cfg)
 			if err != nil {
 				return nil, err
 			}
@@ -57,6 +61,8 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 			}
 		}
 	}
+
+	//
 
 	return engine, nil
 }

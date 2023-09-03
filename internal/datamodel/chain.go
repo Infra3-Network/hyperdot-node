@@ -1,5 +1,9 @@
 package datamodel
 
+import (
+	"encoding/json"
+)
+
 type Chain struct {
 	ID                           string  `json:"id"`
 	Prefix                       int     `json:"prefix"`
@@ -90,4 +94,8 @@ type BigQueryDataEngine struct {
 	ChainTables      map[int][]Table        `json:"chainTables"` // chainid to tables
 	CrossChainTables []Table                `json:"crossChainTables"`
 	SystemTables     []Table                `json:"systemTables"`
+}
+
+func (b *BigQueryDataEngine) ToJSON() ([]byte, error) {
+	return json.Marshal(b)
 }

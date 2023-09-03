@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"infra-3.xyz/hyperdot-node/internal/cache"
+	"infra-3.xyz/hyperdot-node/internal/store"
 	"log"
 	"net/http"
 	"regexp"
@@ -25,11 +27,12 @@ var (
 type BigQuerySyncer struct {
 	ctx            context.Context
 	cfg            common.Config
-	bigqueryClient *clients.SimpleBigQueryClinet
+	boltStore      *store.BoltStore
+	bigqueryClient *clients.SimpleBigQueryClient
 }
 
-// New fetchpara chain
-func NewBigQuerySyncer(cfg *common.Config) (*BigQuerySyncer, error) {
+// NewBigQuerySyncer New fetchpara chain
+func NewBigQuerySyncer(cfg *common.Config, boltStore *store.BoltStore) (*BigQuerySyncer, error) {
 	ctx := context.Background()
 	client, err := clients.NewSimpleBigQueryClient(ctx, cfg)
 	if err != nil {
@@ -39,19 +42,38 @@ func NewBigQuerySyncer(cfg *common.Config) (*BigQuerySyncer, error) {
 	return &BigQuerySyncer{
 		ctx:            ctx,
 		cfg:            *cfg,
+		boltStore:      boltStore,
 		bigqueryClient: client,
 	}, nil
 }
 
-func (f *BigQuerySyncer) Do() (*datamodel.BigQueryDataEngine, error) {
-	return f.do()
+func (f *BigQuerySyncer) Do() error {
+	chainData, err := f.do()
+	if err != nil {
+		log.Printf("Error fetching bigquery engine chaindata: %v", err)
+		return err
+	}
+
+	cache.GlobalDataEngine.SetDatasets("bigquery", chainData) // TODO: should call SetDatasets
+	if err := f.boltStore.SetDatasets("bigquery", chainData); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (f *BigQuerySyncer) do() (*datamodel.BigQueryDataEngine, error) {
-	return BuildBigQueryEngine(f.ctx, f.bigqueryClient, &f.cfg.Polkaholic)
+func (f *BigQuerySyncer) do() (*datamodel.QueryEngineDatasets, error) {
+	raw, err := BuildBigQueryEngineRawDataset(f.ctx, f.bigqueryClient, &f.cfg.Polkaholic)
+	if err != nil {
+		return nil, err
+	}
+
+	return &datamodel.QueryEngineDatasets{
+		Raw: raw,
+	}, nil
 }
 
-func BuildBigQueryEngine(ctx context.Context, bigqueryClient *clients.SimpleBigQueryClinet, cfg *common.PolkaholicConfig) (*datamodel.BigQueryDataEngine, error) {
+func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.SimpleBigQueryClient, cfg *common.PolkaholicConfig) (*datamodel.QueryEngineDatasetInfo, error) {
 	log.Printf("Start BuildBigQueryEngine Job")
 
 	url := fmt.Sprintf("%s/chains?limit=-1", cfg.BaseUrl)
@@ -76,21 +98,46 @@ func BuildBigQueryEngine(ctx context.Context, bigqueryClient *clients.SimpleBigQ
 		return nil, err
 	}
 
-	relayChainMap := make(map[string]*datamodel.RelayChain)
-	// get relaychain
+	var chainMap = make(map[int]datamodel.Chain, len(chains))
+	for _, chain := range chains {
+		chainMap[chain.ChainID] = chain
+	}
+
+	relayChainMap := make(map[string]*datamodel.RelayChainMetadata, 0)
 	for _, chain := range chains {
 		if chain.ID == chain.RelayChain {
-			relayChainMap[chain.RelayChain] = &datamodel.RelayChain{
-				Relay:  chain,
-				Chains: make([]datamodel.Chain, 0),
+			var showColor string
+			if chain.ChainName == "Polkadot" {
+				showColor = "#E0016A"
+			} else if chain.ChainName == "Kusama" {
+				showColor = "#000000"
+			} else {
+				showColor = "#00C67D"
+			}
+			relayChainMap[chain.RelayChain] = &datamodel.RelayChainMetadata{
+				ChainID:   chain.ChainID,
+				Name:      chain.ChainName,
+				ShowColor: showColor,
+				ParaChainIDs: []int{
+					chain.ChainID,
+				},
 			}
 		}
 	}
+	//relayChainMap := make(map[string]*datamodel.RelayChain)
+	//for _, chain := range chains {
+	//	if chain.ID == chain.RelayChain {
+	//		relayChainMap[chain.RelayChain] = &datamodel.RelayChain{
+	//			Relay:  chain,
+	//			Chains: make([]datamodel.Chain, 0),
+	//		}
+	//	}
+	//}
 
 	// get chains of relaychain
 	for _, chain := range chains {
 		if relayChain, ok := relayChainMap[chain.RelayChain]; ok && !(chain.ID == chain.RelayChain) {
-			relayChain.Chains = append(relayChain.Chains, chain)
+			relayChain.ParaChainIDs = append(relayChain.ParaChainIDs, chain.ChainID)
 		}
 	}
 
@@ -119,13 +166,11 @@ func BuildBigQueryEngine(ctx context.Context, bigqueryClient *clients.SimpleBigQ
 		relays = append(relays, relayChainName)
 	}
 
-	return &datamodel.BigQueryDataEngine{
-		Name:             "bigquery",
-		Relays:           relays,
-		RelayChains:      relayChainMap,
-		ChainTables:      chainTableMap,
-		CrossChainTables: crossChainTables,
-		SystemTables:     systemTables,
+	return &datamodel.QueryEngineDatasetInfo{
+		Id:          "raw",
+		Chains:      chainMap,
+		RelayChains: relayChainMap,
+		ChainTables: chainTableMap,
 	}, err
 }
 

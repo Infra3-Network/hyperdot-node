@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"infra-3.xyz/hyperdot-node/internal/common"
+	"infra-3.xyz/hyperdot-node/internal/store"
 )
 
 type ApiServer struct {
@@ -16,8 +17,8 @@ type ApiServer struct {
 	srv *http.Server
 }
 
-func NewApiServer(cfg *common.Config) (*ApiServer, error) {
-	engine, err := NewRouterBuilder(cfg).Build()
+func NewApiServer(boltStore *store.BoltStore, cfg *common.Config) (*ApiServer, error) {
+	engine, err := NewRouterBuilder(boltStore, cfg).Build()
 	if err != nil {
 		return nil, err
 	}

@@ -1,11 +1,11 @@
 package jobs
 
 import (
+	"infra-3.xyz/hyperdot-node/internal/store"
 	"log"
 	"sync/atomic"
 
 	"github.com/jasonlvhit/gocron"
-	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/common"
 )
 
@@ -24,20 +24,16 @@ func NewJobManager(cfg *common.Config) *JobManager {
 	}
 }
 
-func (j *JobManager) Init() (err error) {
-	if j.bigquerySyncer, err = NewBigQuerySyncer(&j.cfg); err != nil {
+func (j *JobManager) Init(boltStore *store.BoltStore) (err error) {
+	if j.bigquerySyncer, err = NewBigQuerySyncer(&j.cfg, boltStore); err != nil {
 		return
 	}
 
 	gocron.Every(1).Day().Do(func() {
-		chainData, err := j.bigquerySyncer.Do()
-		if err != nil {
+		if err := j.bigquerySyncer.Do(); err != nil {
 			log.Printf("Error fetching bigquery engine chaindata: %v", err)
 			return
 		}
-
-		cache.GlobalDataEngine.SetBigQuery(chainData)
-		// TODO: write bboltdb
 	})
 
 	return nil

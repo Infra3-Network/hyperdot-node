@@ -1,35 +1,47 @@
 package cache
 
 import (
+	"fmt"
 	"sync"
 
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
-type engineCache struct {
-	bigquery *datamodel.BigQueryDataEngine
-	lock     *sync.RWMutex
+type EngineCache struct {
+	tags map[string]map[string]*datamodel.QueryEngineDatasetInfo
+	lock *sync.RWMutex
 }
 
-func NewDataEngineCache() *engineCache {
-	return &engineCache{
-		bigquery: new(datamodel.BigQueryDataEngine),
-		lock:     &sync.RWMutex{},
+func NewDataEngineCache() *EngineCache {
+	return &EngineCache{
+		tags: make(map[string]map[string]*datamodel.QueryEngineDatasetInfo),
+		lock: &sync.RWMutex{},
 	}
 }
 
 var GlobalDataEngine = NewDataEngineCache()
 
-func (e *engineCache) SetBigQuery(engine *datamodel.BigQueryDataEngine) {
+func (e *EngineCache) SetDatasets(queryEngine string, datasets *datamodel.QueryEngineDatasets) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
+	if engine, ok := e.tags[queryEngine]; ok {
+		if datasets.Raw != nil {
+			engine["raw"] = datasets.Raw
+		}
+	}
 
-	e.bigquery = engine
 }
 
-func (e *engineCache) GetBigQuery() *datamodel.BigQueryDataEngine {
+func (e *EngineCache) GetDatasets(queryEngine string, tag string) (*datamodel.QueryEngineDatasetInfo, error) {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
-
-	return e.bigquery
+	if engine, ok := e.tags[queryEngine]; ok {
+		if dataset, ok := engine[tag]; ok {
+			return dataset, nil
+		} else {
+			return nil, fmt.Errorf("%s not found", tag)
+		}
+	} else {
+		return nil, fmt.Errorf("%s not found", queryEngine)
+	}
 }

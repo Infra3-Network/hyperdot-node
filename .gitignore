@@ -44,3 +44,6 @@ vendor
 # Sublime Text
 *.sublime-project
 *.sublime-workspace
+
+# Developer usage dir
+.local
