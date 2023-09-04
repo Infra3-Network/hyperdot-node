@@ -99,7 +99,6 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 				chainTables[chainID] = append(chainTables[chainID], table.TableID)
 			}
 		}
-
 		ctx.JSON(200, GetQueryEngineDatasetResponse{
 			BaseResponse: ResponseOk(),
 			Data: struct {

@@ -149,15 +149,16 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 	if err != nil {
 		return nil, err
 	}
-	if err := processTables("polkadot", tables, chainTableMap, &crossChainTables, &systemTables); err != nil {
+	if err := processTables("polkadot", tables, &chainTableMap, &crossChainTables, &systemTables); err != nil {
 		return nil, err
 	}
 
-	tables, err = bigqueryClient.QueryCryptoKusamaTableScheme(ctx)
+	kusamaTables, err := bigqueryClient.QueryCryptoKusamaTableScheme(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err := processTables("kusama", tables, chainTableMap, &crossChainTables, &systemTables); err != nil {
+
+	if err := processTables("kusama", kusamaTables, &chainTableMap, &crossChainTables, &systemTables); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +175,7 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 	}, err
 }
 
-func processTables(relayChainName string, tables []datamodel.Table, chainTableMap map[int][]datamodel.Table, crossChainTables *[]datamodel.Table, systemTables *[]datamodel.Table) error {
+func processTables(relayChainName string, tables []datamodel.Table, chainTableMap *map[int][]datamodel.Table, crossChainTables *[]datamodel.Table, systemTables *[]datamodel.Table) error {
 	re := regexp.MustCompile(`\d+`)
 	for _, table := range tables {
 		match := re.FindString(table.TableID)
@@ -196,12 +197,17 @@ func processTables(relayChainName string, tables []datamodel.Table, chainTableMa
 			return err
 		}
 
-		if tables, ok := chainTableMap[chainId]; ok {
-			chainTableMap[chainId] = append(tables, table)
-		} else {
-			chainTableMap[chainId] = []datamodel.Table{table}
+		if relayChainName == "kusama" {
+			// see https://github.com/colorfulnotion/substrate-etl/tree/main/kusama
+			chainId += 20000
 		}
 
+		if tables, ok := (*chainTableMap)[chainId]; ok {
+			(*chainTableMap)[chainId] = append(tables, table)
+		} else {
+			(*chainTableMap)[chainId] = []datamodel.Table{table}
+		}
 	}
+	fmt.Println("chainTableMapLen: ", len(*chainTableMap))
 	return nil
 }
