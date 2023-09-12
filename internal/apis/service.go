@@ -4,11 +4,13 @@ import (
 	"cloud.google.com/go/bigquery"
 	"context"
 	"errors"
+	"fmt"
+	"log"
+	"strings"
+
 	"google.golang.org/api/iterator"
 	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
-	"log"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"infra-3.xyz/hyperdot-node/internal/clients"
@@ -41,8 +43,8 @@ func (q *QueryService) ListEnginesHandle() gin.HandlerFunc {
 		data, err := q.bboltStore.GetQueryEngines()
 		if err != nil {
 			ctx.JSON(200, BaseResponse{
-				Code:    Err,
-				Message: err.Error(),
+				ErrorCode:    Err,
+				ErrorMessage: err.Error(),
 			})
 			return
 		}
@@ -60,8 +62,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 		engineId := ctx.Param("engineId")
 		if len(engineId) == 0 {
 			ctx.JSON(200, BaseResponse{
-				Code:    Err,
-				Message: "engineId is empty",
+				ErrorCode:    Err,
+				ErrorMessage: "engineId is empty",
 			})
 			return
 		}
@@ -70,8 +72,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 		datasetId := ctx.Param("datasetId")
 		if len(datasetId) == 0 {
 			ctx.JSON(200, BaseResponse{
-				Code:    Err,
-				Message: "datasetId is empty",
+				ErrorCode:    Err,
+				ErrorMessage: "datasetId is empty",
 			})
 			return
 		}
@@ -86,8 +88,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 			data, err = q.bboltStore.GetDataset(engineId, datasetId)
 			if err != nil {
 				ctx.JSON(200, BaseResponse{
-					Code:    Err,
-					Message: err.Error(),
+					ErrorCode:    Err,
+					ErrorMessage: err.Error(),
 				})
 				return
 			}
@@ -116,22 +118,47 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 	}
 }
 
+// @BasePath /apis/v1/
+
+// @Summary run query
+// @Schemes
+// @Description run query
+// @Accept json
+// @Produce json
+// @Success 200 {QueryRunResponseData} QueryRunResponseData
+// @Router /apis/v1/query/run [post]
 func (q *QueryService) RunHandle() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// extract QueryRunRequest
 		var req QueryRunRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.JSON(200, BaseResponse{
-				Code:    Err,
-				Message: err.Error(),
+				ErrorCode:    Err,
+				ErrorMessage: err.Error(),
 			})
 			return
 		}
 
 		if len(req.Query) == 0 {
 			ctx.JSON(200, BaseResponse{
-				Code:    Err,
-				Message: "Query is empty",
+				ErrorCode:    Err,
+				ErrorMessage: "Query is empty",
+			})
+			return
+		}
+
+		if len(req.Engine) == 0 {
+			ctx.JSON(200, BaseResponse{
+				ErrorCode:    Err,
+				ErrorMessage: "Engine is empty",
+			})
+			return
+		}
+
+		if strings.ToLower(req.Engine) != "bigquery" {
+			ctx.JSON(200, BaseResponse{
+				ErrorCode:    Err,
+				ErrorMessage: fmt.Sprintf("Engine %s is not supported", req.Engine),
 			})
 			return
 		}
@@ -140,10 +167,28 @@ func (q *QueryService) RunHandle() gin.HandlerFunc {
 		iter, err := q.bigqueryClient.Query(ctx, req.Query)
 		if err != nil {
 			ctx.JSON(200, BaseResponse{
-				Code:    Err,
-				Message: err.Error(),
+				ErrorCode:    Err,
+				ErrorMessage: err.Error(),
 			})
 			return
+		}
+
+		var schemas []datamodel.TableSchema
+		for _, filed := range iter.Schema {
+			mode := ""
+			if filed.Repeated {
+				mode = "REPEATED"
+			} else if filed.Required {
+				mode = "REQUIRED"
+			} else {
+				mode = "NULLABLE"
+			}
+
+			schemas = append(schemas, datamodel.TableSchema{
+				Mode: mode,
+				Name: filed.Name,
+				Type: string(filed.Type),
+			})
 		}
 
 		// extract result
@@ -161,7 +206,7 @@ func (q *QueryService) RunHandle() gin.HandlerFunc {
 
 		ctx.JSON(200, QueryRunResponse{
 			BaseResponse: ResponseOk(),
-			Rows:         results,
+			Data:         QueryRunResponseData{Schemas: schemas, Rows: results},
 		})
 	}
 }

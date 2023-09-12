@@ -1,0 +1,17 @@
+info:
+  contact: {}
+paths:
+  /apis/v1/query/run:
+    post:
+      consumes:
+      - application/json
+      description: run query
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: QueryRunResponseData
+      summary: run query
+swagger: "2.0"

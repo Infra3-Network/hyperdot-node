@@ -4,6 +4,11 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	docs "infra-3.xyz/hyperdot-node/docs"
+	"net/http"
+
 	"infra-3.xyz/hyperdot-node/internal/common"
 	"infra-3.xyz/hyperdot-node/internal/store"
 )
@@ -26,6 +31,23 @@ type Router interface {
 	RouteTables() []RouteTable
 }
 
+type afterMiddlewareWriter struct {
+	gin.ResponseWriter
+}
+
+func CorsResponse(r *http.Request, w gin.ResponseWriter) {
+	w.Header().Add("X-TIME", "time")
+	w.Header().Add("Access-Control-Allow-Credentials", "true")
+	w.Header().Add("Access-Control-Allow-Methods", "POST,GET,OPTIONS,DELETE,PUT,HEAD,PATCH")
+	w.Header().Add("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Add("Access-Control-Allow-Headers", r.Header.Get("Access-Control-Request-Headers"))
+}
+
+func AfterMiddleware(c *gin.Context) {
+	c.Writer = &afterMiddlewareWriter{c.Writer}
+	c.Next()
+}
+
 type RouterBuilder struct {
 	enableQuery bool
 	boltStore   *store.BoltStore
@@ -43,6 +65,7 @@ func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config) *RouterBui
 func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	engine := gin.Default()
 	versionUrl := fmt.Sprintf("%s/%s", BASE, CURRENT_VERSION)
+	docs.SwaggerInfo.BasePath = "/apis/v1"
 	engine.Use(cors.Default())
 	router := engine.Group(versionUrl)
 	{
@@ -61,7 +84,7 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 			}
 		}
 	}
-
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	//
 
 	return engine, nil

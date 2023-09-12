@@ -13,21 +13,14 @@ const (
 )
 
 type BaseResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Success      bool   `json:"success"`
+	ErrorMessage string `json:"errorMessage"`
+	ErrorCode    int    `json:"errorCode"`
 }
 
 func ResponseOk() BaseResponse {
 	return BaseResponse{
-		Code:    Ok,
-		Message: "ok",
-	}
-}
-
-func ResponseOkWithMsg(msg string) BaseResponse {
-	return BaseResponse{
-		Code:    Ok,
-		Message: msg,
+		Success: true,
 	}
 }
 
@@ -44,10 +37,14 @@ type GetQueryEngineDatasetResponse struct {
 		RelayChains map[string]*datamodel.RelayChainMetadata `json:"relayChains"`
 		ChainTables map[int][]string                         `json:"chainTables"`
 	} `json:"data"`
-	//Data *datamodel.QueryEngineDatasetInfo
+}
+
+type QueryRunResponseData struct {
+	Schemas []datamodel.TableSchema     `json:"schemas"`
+	Rows    []map[string]bigquery.Value `json:"rows"`
 }
 
 type QueryRunResponse struct {
 	BaseResponse
-	Rows []map[string]bigquery.Value `json:"rows"`
+	Data QueryRunResponseData `json:"data"`
 }

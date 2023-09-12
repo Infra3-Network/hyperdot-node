@@ -1,5 +1,6 @@
 package apis
 
 type QueryRunRequest struct {
-	Query string `json:"query"`
+	Engine string `json:"engine"`
+	Query  string `json:"query"`
 }
