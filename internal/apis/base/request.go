@@ -1,4 +1,4 @@
-package apis
+package base
 
 type QueryRunRequest struct {
 	Engine string `json:"engine"`

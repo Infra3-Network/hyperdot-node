@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 	"io"
 	"log"
@@ -88,6 +91,19 @@ func initJobs(jobManager *jobs.JobManager, store *store.BoltStore) error {
 	return nil
 }
 
+func initDB(cfg *common.Config) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s",
+		cfg.Postgres.Host,
+		cfg.Postgres.User,
+		cfg.Postgres.Password,
+		cfg.Postgres.DBName,
+		cfg.Postgres.Port,
+		cfg.Postgres.TimeZone,
+	)
+
+	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+}
+
 func main() {
 	flag.Parse()
 
@@ -107,7 +123,12 @@ func main() {
 		log.Fatalf("Error initial jobs: %v", err)
 	}
 
-	apiserver, err := apis.NewApiServer(boltStore, cfg)
+	db, err := initDB(cfg)
+	if err != nil {
+		log.Fatalf("Error initial database: %v", err)
+	}
+
+	apiserver, err := apis.NewApiServer(boltStore, cfg, db)
 	if err != nil {
 		log.Fatalf("Error creating apiserver: %v", err)
 	}

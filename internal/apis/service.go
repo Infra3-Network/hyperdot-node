@@ -8,13 +8,14 @@ import (
 	"log"
 	"strings"
 
-	"google.golang.org/api/iterator"
-	"infra-3.xyz/hyperdot-node/internal/cache"
-	"infra-3.xyz/hyperdot-node/internal/datamodel"
-
 	"github.com/gin-gonic/gin"
+	"google.golang.org/api/iterator"
+
+	"infra-3.xyz/hyperdot-node/internal/apis/base"
+	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/common"
+	"infra-3.xyz/hyperdot-node/internal/datamodel"
 	"infra-3.xyz/hyperdot-node/internal/store"
 )
 
@@ -42,15 +43,15 @@ func (q *QueryService) ListEnginesHandle() gin.HandlerFunc {
 		// get query engines from bolt
 		data, err := q.bboltStore.GetQueryEngines()
 		if err != nil {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: err.Error(),
 			})
 			return
 		}
 
-		ctx.JSON(200, ListEngineResponse{
-			BaseResponse: ResponseOk(),
+		ctx.JSON(200, base.ListEngineResponse{
+			BaseResponse: base.ResponseOk(),
 			Data:         data,
 		})
 	}
@@ -61,8 +62,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 		// get :engineId
 		engineId := ctx.Param("engineId")
 		if len(engineId) == 0 {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: "engineId is empty",
 			})
 			return
@@ -71,8 +72,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 		// get :datasetId
 		datasetId := ctx.Param("datasetId")
 		if len(datasetId) == 0 {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: "datasetId is empty",
 			})
 			return
@@ -87,8 +88,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 		if err != nil || data == nil {
 			data, err = q.bboltStore.GetDataset(engineId, datasetId)
 			if err != nil {
-				ctx.JSON(200, BaseResponse{
-					ErrorCode:    Err,
+				ctx.JSON(200, base.BaseResponse{
+					ErrorCode:    base.Err,
 					ErrorMessage: err.Error(),
 				})
 				return
@@ -101,8 +102,8 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 				chainTables[chainID] = append(chainTables[chainID], table.TableID)
 			}
 		}
-		ctx.JSON(200, GetQueryEngineDatasetResponse{
-			BaseResponse: ResponseOk(),
+		ctx.JSON(200, base.GetQueryEngineDatasetResponse{
+			BaseResponse: base.ResponseOk(),
 			Data: struct {
 				Id          string                                   `json:"id"`
 				Chains      map[int]datamodel.Chain                  `json:"chains"`
@@ -130,34 +131,34 @@ func (q *QueryService) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 func (q *QueryService) RunHandle() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// extract QueryRunRequest
-		var req QueryRunRequest
+		var req base.QueryRunRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: err.Error(),
 			})
 			return
 		}
 
 		if len(req.Query) == 0 {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: "Query is empty",
 			})
 			return
 		}
 
 		if len(req.Engine) == 0 {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: "Engine is empty",
 			})
 			return
 		}
 
 		if strings.ToLower(req.Engine) != "bigquery" {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: fmt.Sprintf("Engine %s is not supported", req.Engine),
 			})
 			return
@@ -166,8 +167,8 @@ func (q *QueryService) RunHandle() gin.HandlerFunc {
 		// run query
 		iter, err := q.bigqueryClient.Query(ctx, req.Query)
 		if err != nil {
-			ctx.JSON(200, BaseResponse{
-				ErrorCode:    Err,
+			ctx.JSON(200, base.BaseResponse{
+				ErrorCode:    base.Err,
 				ErrorMessage: err.Error(),
 			})
 			return
@@ -204,9 +205,9 @@ func (q *QueryService) RunHandle() gin.HandlerFunc {
 			results = append(results, row)
 		}
 
-		ctx.JSON(200, QueryRunResponse{
-			BaseResponse: ResponseOk(),
-			Data:         QueryRunResponseData{Schemas: schemas, Rows: results},
+		ctx.JSON(200, base.QueryRunResponse{
+			BaseResponse: base.ResponseOk(),
+			Data:         base.QueryRunResponseData{Schemas: schemas, Rows: results},
 		})
 	}
 }
@@ -215,24 +216,21 @@ func (q *QueryService) Name() string {
 	return "query"
 }
 
-func (q *QueryService) RouteTables() []RouteTable {
-	return []RouteTable{
+func (q *QueryService) RouteTables() []base.RouteTable {
+	return []base.RouteTable{
 		{
 			Method:  "GET",
-			Group:   q.group,
 			Path:    q.group + "/engines",
 			Handler: q.ListEnginesHandle(),
 		},
 		{
 			Method:  "GET",
-			Group:   q.group,
 			Path:    q.group + "/engines/:engineId/datasets/:datasetId",
 			Handler: q.GetQueryEngineDatasetHandle(),
 		},
 
 		{
 			Method:  "POST",
-			Group:   q.group,
 			Path:    q.group + "/run",
 			Handler: q.RunHandle(),
 		},

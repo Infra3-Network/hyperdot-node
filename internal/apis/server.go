@@ -2,6 +2,7 @@ package apis
 
 import (
 	"context"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"os"
@@ -17,8 +18,8 @@ type ApiServer struct {
 	srv *http.Server
 }
 
-func NewApiServer(boltStore *store.BoltStore, cfg *common.Config) (*ApiServer, error) {
-	engine, err := NewRouterBuilder(boltStore, cfg).Build()
+func NewApiServer(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB) (*ApiServer, error) {
+	engine, err := NewRouterBuilder(boltStore, cfg, db).Build()
 	if err != nil {
 		return nil, err
 	}

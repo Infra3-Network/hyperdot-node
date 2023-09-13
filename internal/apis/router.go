@@ -2,13 +2,16 @@ package apis
 
 import (
 	"fmt"
-	"github.com/gin-contrib/cors"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"gorm.io/gorm"
 	docs "infra-3.xyz/hyperdot-node/docs"
-	"net/http"
 
+	"infra-3.xyz/hyperdot-node/internal/apis/base"
+	"infra-3.xyz/hyperdot-node/internal/apis/service/user"
 	"infra-3.xyz/hyperdot-node/internal/common"
 	"infra-3.xyz/hyperdot-node/internal/store"
 )
@@ -19,16 +22,9 @@ const (
 	CURRENT_VERSION = V1
 )
 
-type RouteTable struct {
-	Method  string
-	Group   string
-	Path    string
-	Handler gin.HandlerFunc
-}
-
 type Router interface {
 	Name() string
-	RouteTables() []RouteTable
+	RouteTables() []base.RouteTable
 }
 
 type afterMiddlewareWriter struct {
@@ -51,13 +47,15 @@ func AfterMiddleware(c *gin.Context) {
 type RouterBuilder struct {
 	enableQuery bool
 	boltStore   *store.BoltStore
+	db          *gorm.DB
 	cfg         *common.Config
 }
 
-func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config) *RouterBuilder {
+func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
 		boltStore:   boltStore,
+		db:          db,
 		cfg:         cfg,
 	}
 }
@@ -66,7 +64,7 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	engine := gin.Default()
 	versionUrl := fmt.Sprintf("%s/%s", BASE, CURRENT_VERSION)
 	docs.SwaggerInfo.BasePath = "/apis/v1"
-	engine.Use(cors.Default())
+	engine.Use(base.JwtAuthMiddleware())
 	router := engine.Group(versionUrl)
 	{
 		var svcs []Router
@@ -77,6 +75,8 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 			}
 			svcs = append(svcs, svc)
 		}
+
+		svcs = append(svcs, user.New(r.db))
 
 		for _, svc := range svcs {
 			for _, table := range svc.RouteTables() {

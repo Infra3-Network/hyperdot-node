@@ -1,7 +1,9 @@
-package apis
+package base
 
 import (
 	"cloud.google.com/go/bigquery"
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
@@ -22,6 +24,14 @@ func ResponseOk() BaseResponse {
 	return BaseResponse{
 		Success: true,
 	}
+}
+
+func ResponseErr(ctx *gin.Context, code int, format string, args ...any) {
+	ctx.JSON(code, BaseResponse{
+		Success:      false,
+		ErrorCode:    Err,
+		ErrorMessage: fmt.Sprintf(format, args...),
+	})
 }
 
 type ListEngineResponse struct {
