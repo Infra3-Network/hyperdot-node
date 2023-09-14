@@ -2,10 +2,11 @@ package user
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	_ "gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"net/http"
 
 	"infra-3.xyz/hyperdot-node/internal/apis/base"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
@@ -223,6 +224,61 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) getQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+
+	}
+}
+
+func (s *Service) createQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var request CreateQueryRequest
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		v, ok := ctx.Get("user_id")
+		if !ok {
+			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
+			return
+		}
+
+		if len(request.Data.Name) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "name is required")
+			return
+		}
+		if len(request.Data.Query) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "query is required")
+			return
+		}
+		if len(request.Data.QueryEngine) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
+			return
+		}
+
+		request.Data.UserID = v.(int)
+		result := s.db.Create(&request.Data)
+		if result.Error != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, CreateQueryResponse{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: request.Data,
+		})
+	}
+}
+
+func (s *Service) updateQueryhandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+
+	}
+}
+
 func (s *Service) Name() string {
 	return ServiceName
 }
@@ -244,6 +300,22 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "POST",
 			Path:    group + "/auth/login",
 			Handler: s.loginHandle(),
+		},
+
+		{
+			Method:  "GET",
+			Path:    group + "/query/:id",
+			Handler: s.getQueryHandler(),
+		},
+		{
+			Method:  "POST",
+			Path:    group + "/query",
+			Handler: s.createQueryHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    group + "/query",
+			Handler: s.updateQueryhandler(),
 		},
 	}
 }

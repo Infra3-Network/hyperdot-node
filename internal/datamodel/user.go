@@ -89,3 +89,17 @@ func (basic UserBasic) ToClaims() *UserClaims {
 func (UserModel) TableName() string {
 	return "hyperdot_user"
 }
+
+// UserQueryModel user query model
+type UserQueryModel struct {
+	gorm.Model
+	UserID      int `gorm:"uniqueIndex:idx_user_query_user_id"`
+	Name        string
+	Query       string
+	QueryEngine string
+	Charts      JSON `gorm:"type:json"`
+}
+
+func (UserQueryModel) TableName() string {
+	return "hyperdot_user_query"
+}

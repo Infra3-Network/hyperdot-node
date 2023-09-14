@@ -2,6 +2,7 @@ package user
 
 import (
 	"infra-3.xyz/hyperdot-node/internal/apis/base"
+	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
 type CreateAccountResponse struct {
@@ -16,5 +17,10 @@ type LoginResponseData struct {
 
 type LoginResponse struct {
 	Data LoginResponseData `json:"data"`
+	base.BaseResponse
+}
+
+type CreateQueryResponse struct {
+	Data datamodel.UserQueryModel `json:"data"`
 	base.BaseResponse
 }
