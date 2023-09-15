@@ -16,16 +16,15 @@ const (
 	todoSecret          = "hyperdot"
 )
 
-func TokenDefaultExpireTime() *jwt.NumericDate {
-	expireTime := jwt.NewNumericDate(time.Now().Add(time.Hour * 24))
-	return expireTime
+func TokenDefaultExpireTime() time.Time {
+	return time.Now().Add(time.Hour * 24)
 }
 
-func GenerateJwtToken(claims *datamodel.UserClaims) (string, error) {
+func GenerateJwtToken(claims *datamodel.UserClaims, expireAt time.Time) (string, error) {
 	claims.RegisteredClaims = jwt.RegisteredClaims{
 		Issuer:    TokenIssuer,
 		Subject:   TokenDefaultSubject,
-		ExpiresAt: TokenDefaultExpireTime(),
+		ExpiresAt: jwt.NewNumericDate(expireAt),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

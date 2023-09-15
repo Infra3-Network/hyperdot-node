@@ -12,8 +12,9 @@ import (
 
 // UserClaims is jwt auth claims
 type UserClaims struct {
+	UserID                           uint           `json:"user_id"`
 	Provider                         string         `json:"provider,omitempty"`
-	UserID                           string         `json:"userid,omitempty"`
+	Username                         string         `json:"username,omitempty"`
 	LastLoginAt                      *time.Time     `json:"last_login,omitempty"`
 	LastActiveAt                     *time.Time     `json:"last_active,omitempty"`
 	LongestDistractionSinceLastLogin *time.Duration `json:"distraction_time,omitempty"`
@@ -22,16 +23,16 @@ type UserClaims struct {
 
 // UserSignLog sign log
 type UserSignLog struct {
-	UserAgent string
-	At        *time.Time
-	IP        string
+	UserAgent string     `json:"user_agent"`
+	At        *time.Time `json:"at"`
+	IP        string     `json:"ip"`
 }
 
 // SignLogs record sign in logs
 type UserSignLogs struct {
-	Log         string `sql:"-"`
-	SignInCount uint
-	Logs        []UserSignLog
+	Log         string        `sql:"-" json:"log"`
+	SignInCount uint          `json:"sign_in_count"`
+	Logs        []UserSignLog `json:"logs"`
 }
 
 // Scan scan data into sign logs
@@ -63,26 +64,27 @@ func (signLogs UserSignLogs) Value() (driver.Value, error) {
 
 // UserBasic basic information about auth identity
 type UserBasic struct {
-	Provider          string // phone, email, wechat, github...
-	UID               string `gorm:"column:uid"`
-	EncryptedPassword string
-	UserID            string
-	Email             string
-	ConfirmedAt       *time.Time
+	Provider          string     `json:"provider"`
+	UID               string     `gorm:"column:uid" json:"uid"`
+	EncryptedPassword string     `json:"encrypted_password"`
+	Username          string     `json:"username"`
+	Email             string     `json:"email"`
+	ConfirmedAt       *time.Time `json:"confirmed_at"`
 }
 
 // UserModel auth identity session model
 type UserModel struct {
-	gorm.Model
+	ID uint `gorm:"primarykey" json:"id"`
 	UserBasic
 	UserSignLogs
 }
 
 // ToClaims convert to auth Claims
-func (basic UserBasic) ToClaims() *UserClaims {
+func (model UserModel) ToClaims() *UserClaims {
 	claims := &UserClaims{}
-	claims.Provider = basic.Provider
-	claims.UserID = basic.UserID
+	claims.Provider = model.Provider
+	claims.Username = model.Username
+	claims.UserID = model.ID
 	return claims
 }
 

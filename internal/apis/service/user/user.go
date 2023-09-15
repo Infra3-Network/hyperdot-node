@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 	_ "gorm.io/driver/postgres"
@@ -75,6 +76,36 @@ func (s *Service) init() error {
 	//}))
 }
 
+func (s *Service) getUserHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		v, ok := ctx.Get("user_id")
+		if !ok {
+			base.ResponseErr(ctx, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		userId := v.(uint)
+		var user datamodel.UserModel
+		result := s.db.First(&user, userId)
+		if result.Error != nil {
+			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+				return
+			}
+
+			base.ResponseErr(ctx, http.StatusOK, "user not found")
+			return
+		}
+		user.EncryptedPassword = ""
+
+		ctx.JSON(http.StatusOK, GetUserResponse{
+			UserModel: user,
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+		})
+	}
+}
+
 func (s *Service) createAccountHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var request CreateAccountRequest
@@ -108,7 +139,7 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 			}
 
 			var existingUser datamodel.UserModel
-			result := s.db.Where("user_id = ? OR email = ?", request.UserId, request.Email).First(&existingUser)
+			result := s.db.Where("username = ? OR email = ?", request.UserId, request.Email).First(&existingUser)
 			if result.Error == nil {
 				if existingUser.UID == request.UserId {
 					base.ResponseErr(ctx, http.StatusBadRequest, "the user %s already exists", request.UserId)
@@ -133,7 +164,7 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 					Provider: request.Provider,
 					// UID:      "", TODO, by uuid
 					Email:             request.Email,
-					UserID:            request.UserId,
+					Username:          request.UserId,
 					EncryptedPassword: encryptedPassword,
 				},
 			}
@@ -185,7 +216,7 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 				return
 			}
 			var existingUser datamodel.UserModel
-			result := s.db.Where("user_id = ? OR email = ?", request.UserId, request.Email).First(&existingUser)
+			result := s.db.Where("username = ? OR email = ?", request.UserId, request.Email).First(&existingUser)
 			if result.Error != nil {
 				if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 					base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
@@ -201,11 +232,18 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 				return
 			}
 
-			signing, err := base.GenerateJwtToken(existingUser.ToClaims())
+			expireAt := base.TokenDefaultExpireTime()
+			signing, err := base.GenerateJwtToken(existingUser.ToClaims(), expireAt)
 			if err != nil {
 				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 				return
 			}
+
+			http.SetCookie(ctx.Writer, &http.Cookie{
+				Name:    "token",
+				Value:   url.QueryEscape(signing),
+				Expires: expireAt,
+			})
 
 			ctx.JSON(http.StatusOK, LoginResponse{
 				BaseResponse: base.BaseResponse{
@@ -291,6 +329,12 @@ func (s *Service) RouteTables() []base.RouteTable {
 		//	Path:    group + "/auth/refreshToken",
 		//	Handler: s.refreshTokenHandler(),
 		//},
+		{
+			Method:  "GET",
+			Path:    group,
+			Handler: s.getUserHandler(),
+		},
+
 		{
 			Method:  "POST",
 			Path:    group + "/auth/createAccount",

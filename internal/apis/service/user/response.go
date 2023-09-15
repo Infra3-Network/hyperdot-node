@@ -5,13 +5,17 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
+type GetUserResponse struct {
+	datamodel.UserModel `json:"data"`
+	base.BaseResponse
+}
+
 type CreateAccountResponse struct {
 	base.BaseResponse
 }
 
 type LoginResponseData struct {
 	Algorithm string `json:"algorithm"`
-	Secret    string `json:"secret"`
 	Token     string `json:"token"`
 }
 

@@ -1,15 +1,16 @@
 package base
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 // JwtAuthMiddleware 基于JWT的认证中间件--验证用户是否登录
 func JwtAuthMiddleware() func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		// if url is /apis/v1/user/auth/login, next
-		if ctx.Request.URL.Path == "/apis/v1/user/auth/login" {
+		if ctx.Request.URL.Path == "/apis/v1/user/auth/login" || ctx.Request.URL.Path == "/apis/v1/user/auth/createAccount" {
 			ctx.Next()
 			return
 		}
@@ -35,7 +36,8 @@ func JwtAuthMiddleware() func(ctx *gin.Context) {
 			return
 		}
 
-		ctx.Set("username", claims.UserID)
+		ctx.Set("user_id", claims.UserID)
+		ctx.Set("username", claims.Username)
 		ctx.Next()
 	}
 }
