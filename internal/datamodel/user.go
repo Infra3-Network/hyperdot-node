@@ -7,7 +7,6 @@ import (
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
-	"gorm.io/gorm"
 )
 
 // UserClaims is jwt auth claims
@@ -94,12 +93,13 @@ func (UserModel) TableName() string {
 
 // UserQueryModel user query model
 type UserQueryModel struct {
-	gorm.Model
-	UserID      int `gorm:"uniqueIndex:idx_user_query_user_id"`
-	Name        string
-	Query       string
-	QueryEngine string
-	Charts      JSON `gorm:"type:json"`
+	ID          uint   `json:"id" gorm:"primarykey"`
+	UserID      int    `json:"user_id" gorm:"uniqueIndex:idx_user_query_user_id"`
+	Name        string `json:"name"`
+	Query       string `json:"query"`
+	QueryEngine string `json:"query_engine"`
+	IsPrivacy   bool   `json:"is_privacy"`
+	Charts      JSON   `json:"charts" gorm:"type:json"`
 }
 
 func (UserQueryModel) TableName() string {
