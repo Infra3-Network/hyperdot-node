@@ -94,11 +94,11 @@ func (UserModel) TableName() string {
 // UserQueryModel user query model
 type UserQueryModel struct {
 	ID          uint   `json:"id" gorm:"primarykey"`
-	UserID      int    `json:"user_id" gorm:"uniqueIndex:idx_user_query_user_id"`
+	UserID      uint   `json:"userId" gorm:"index:idx_user_query_user_id"`
 	Name        string `json:"name"`
 	Query       string `json:"query"`
-	QueryEngine string `json:"query_engine"`
-	IsPrivacy   bool   `json:"is_privacy"`
+	QueryEngine string `json:"queryEngine"`
+	IsPrivacy   bool   `json:"isPrivacy"`
 	Charts      JSON   `json:"charts" gorm:"type:json"`
 }
 

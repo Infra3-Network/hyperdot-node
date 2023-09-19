@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -42,6 +43,9 @@ func New(db *gorm.DB) *Service {
 func (s *Service) init() error {
 	// Migrate AuthIdentity model, AuthIdentity will be used to save auth info, like username/password, oauth token, you could change that.
 	if err := s.db.AutoMigrate(&datamodel.UserModel{}); err != nil {
+		return err
+	}
+	if err := s.db.AutoMigrate(&datamodel.UserQueryModel{}); err != nil {
 		return err
 	}
 
@@ -264,49 +268,82 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 
 func (s *Service) getQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		id := ctx.Param("id")
+		var query datamodel.UserQueryModel
+		result := s.db.First(&query, id)
+		if result.Error != nil {
+			if result.Error == gorm.ErrRecordNotFound {
+				base.ResponseErr(ctx, http.StatusOK, "query not found")
+				return
+			}
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, UserQueryResponse{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: query,
+		})
 
 	}
 }
 
 func (s *Service) createQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var request CreateQueryRequest
+		var request datamodel.UserQueryModel
 		if err := ctx.ShouldBindJSON(&request); err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
+			return
+		}
+		log.Printf("%v", request)
+
+		v, ok := ctx.Get("user_id")
+		if !ok {
+			log.Printf("can not get user_id from contex")
+			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
 			return
 		}
 
-		v, ok := ctx.Get("user_id")
+		currentLoginUserId, ok := v.(uint)
 		if !ok {
 			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
 			return
 		}
 
-		if len(request.Data.Name) == 0 {
+		if len(request.Name) == 0 {
 			base.ResponseErr(ctx, http.StatusBadRequest, "name is required")
 			return
 		}
-		if len(request.Data.Query) == 0 {
+		if len(request.Query) == 0 {
 			base.ResponseErr(ctx, http.StatusBadRequest, "query is required")
 			return
 		}
-		if len(request.Data.QueryEngine) == 0 {
+		if len(request.QueryEngine) == 0 {
 			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
 			return
 		}
 
-		request.Data.UserID = v.(int)
-		result := s.db.Create(&request.Data)
+		if request.UserID != 0 && request.UserID != currentLoginUserId {
+			log.Printf("%d, %d", request.UserID, currentLoginUserId)
+			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
+			return
+		} else {
+			request.UserID = currentLoginUserId
+		}
+
+		result := s.db.Create(&request)
 		if result.Error != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
 			return
 		}
 
-		ctx.JSON(http.StatusOK, CreateQueryResponse{
+		ctx.JSON(http.StatusOK, UserQueryResponse{
 			BaseResponse: base.BaseResponse{
 				Success: true,
 			},
-			Data: request.Data,
+			Data: request,
 		})
 	}
 }

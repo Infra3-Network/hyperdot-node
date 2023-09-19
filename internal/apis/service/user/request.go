@@ -20,10 +20,6 @@ type GetQueryRequest struct {
 	ID string `json:"id"`
 }
 
-type CreateQueryRequest struct {
-	Data datamodel.UserQueryModel
-}
-
 type UpdateQueryRequest struct {
 	Data datamodel.UserQueryModel
 }
