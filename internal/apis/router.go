@@ -2,6 +2,8 @@ package apis
 
 import (
 	"fmt"
+	"infra-3.xyz/hyperdot-node/internal/apis/service/query"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -49,14 +51,16 @@ type RouterBuilder struct {
 	boltStore   *store.BoltStore
 	db          *gorm.DB
 	cfg         *common.Config
+	engines     map[string]dataengine.QueryEngine
 }
 
-func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB) *RouterBuilder {
+func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
 		boltStore:   boltStore,
 		db:          db,
 		cfg:         cfg,
+		engines:     engines,
 	}
 }
 
@@ -68,16 +72,15 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	router := engine.Group(versionUrl)
 	{
 		var svcs []Router
-		if r.enableQuery {
-			svc, err := NewQueryService(r.boltStore, r.cfg)
-			if err != nil {
-				return nil, err
-			}
-			svcs = append(svcs, svc)
-		}
-
-		svcs = append(svcs, user.New(r.db))
-
+		//if r.enableQuery {
+		//	svc, err := NewQueryService(r.boltStore, r.cfg)
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//	svcs = append(svcs, svc)
+		//}
+		svcs = append(svcs, query.New(r.boltStore, r.cfg, r.db, r.engines))
+		svcs = append(svcs, user.New(r.db, r.engines))
 		for _, svc := range svcs {
 			for _, table := range svc.RouteTables() {
 				router.Handle(table.Method, table.Path, table.Handler)

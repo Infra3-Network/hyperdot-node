@@ -24,8 +24,7 @@ type LoginResponse struct {
 	base.BaseResponse
 }
 
-type UserQueryResponse struct {
+type QueryResponse struct {
 	Data datamodel.UserQueryModel `json:"data"`
 	base.BaseResponse
 }
-

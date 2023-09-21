@@ -2,7 +2,7 @@ package user
 
 import (
 	"errors"
-	"log"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"net/http"
 	"net/url"
 
@@ -23,16 +23,17 @@ type Service struct {
 	db *gorm.DB
 	// auth          *auth.Auth
 	authProviders map[string]bool
+	engines       map[string]dataengine.QueryEngine
 }
 
 // New user service
-func New(db *gorm.DB) *Service {
-	//auth := auth.New(&auth.Config{
-	//	DB: db,
-	//})
-	svc := &Service{db: db, authProviders: map[string]bool{
-		PasswordProvider: true,
-	}}
+func New(db *gorm.DB, engines map[string]dataengine.QueryEngine) *Service {
+	svc := &Service{db: db,
+		engines: engines,
+		authProviders: map[string]bool{
+			PasswordProvider: true,
+		},
+	}
 	if err := svc.init(); err != nil {
 		panic(err)
 	}
@@ -280,7 +281,7 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, UserQueryResponse{
+		ctx.JSON(http.StatusOK, QueryResponse{
 			BaseResponse: base.BaseResponse{
 				Success: true,
 			},
@@ -292,45 +293,42 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 
 func (s *Service) createQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		currentUserId, err := base.CurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		var request datamodel.UserQueryModel
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
 			return
 		}
-		log.Printf("%v", request)
 
-		v, ok := ctx.Get("user_id")
-		if !ok {
-			log.Printf("can not get user_id from contex")
-			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
-			return
-		}
-
-		currentLoginUserId, ok := v.(uint)
-		if !ok {
-			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
-			return
-		}
-
-		if len(request.Name) == 0 {
-			base.ResponseErr(ctx, http.StatusBadRequest, "name is required")
+		if len(request.QueryEngine) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
 			return
 		}
 		if len(request.Query) == 0 {
 			base.ResponseErr(ctx, http.StatusBadRequest, "query is required")
 			return
 		}
-		if len(request.QueryEngine) == 0 {
-			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
+
+		_, ok := s.engines[request.QueryEngine]
+		if !ok {
+			base.ResponseErr(ctx, http.StatusBadRequest, "The %s query engine unsupported now", request.QueryEngine)
 			return
 		}
 
-		if request.UserID != 0 && request.UserID != currentLoginUserId {
-			log.Printf("%d, %d", request.UserID, currentLoginUserId)
-			base.ResponseErr(ctx, http.StatusUnauthorized, "user not login")
-			return
+		request.UserID = currentUserId
+
+		if !request.Unsaved {
+			if len(request.Name) == 0 {
+				base.ResponseErr(ctx, http.StatusBadRequest, "name is required")
+				return
+			}
 		} else {
-			request.UserID = currentLoginUserId
+			request.Name = "unsaved"
 		}
 
 		result := s.db.Create(&request)
@@ -339,7 +337,7 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, UserQueryResponse{
+		ctx.JSON(http.StatusOK, QueryResponse{
 			BaseResponse: base.BaseResponse{
 				Success: true,
 			},
@@ -392,11 +390,6 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "POST",
 			Path:    group + "/query",
 			Handler: s.createQueryHandler(),
-		},
-		{
-			Method:  "PUT",
-			Path:    group + "/query",
-			Handler: s.updateQueryhandler(),
 		},
 	}
 }

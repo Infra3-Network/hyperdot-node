@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 	"io"
 	"log"
@@ -104,6 +105,20 @@ func initDB(cfg *common.Config) (*gorm.DB, error) {
 	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
 }
 
+func initEngines(cfg *common.Config) (map[string]dataengine.QueryEngine, error) {
+	res := make(map[string]dataengine.QueryEngine)
+	bigquery, err := dataengine.Make(dataengine.BigQueryName, &dataengine.BigQueryEngineConfig{
+		ProjectId: cfg.Bigquery.ProjectId,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	res[dataengine.BigQueryName] = bigquery
+	return res, nil
+}
+
 func main() {
 	flag.Parse()
 
@@ -128,7 +143,11 @@ func main() {
 		log.Fatalf("Error initial database: %v", err)
 	}
 
-	apiserver, err := apis.NewApiServer(boltStore, cfg, db)
+	engines, err := initEngines(cfg)
+	if err != nil {
+		log.Fatalf("Error initial query engines: %v", err)
+	}
+	apiserver, err := apis.NewApiServer(boltStore, cfg, db, engines)
 	if err != nil {
 		log.Fatalf("Error creating apiserver: %v", err)
 	}

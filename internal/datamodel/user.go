@@ -99,6 +99,7 @@ type UserQueryModel struct {
 	Query       string `json:"query"`
 	QueryEngine string `json:"queryEngine"`
 	IsPrivacy   bool   `json:"isPrivacy"`
+	Unsaved     bool   `json:"unsaved"`
 	Charts      JSON   `json:"charts" gorm:"type:json"`
 }
 
