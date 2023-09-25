@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
-	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
+
+	"gorm.io/gorm"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/gin-gonic/gin"
@@ -314,6 +317,146 @@ func (s *Service) checkUserQueryModelRequest(ctx *gin.Context, model *datamodel.
 	return true
 }
 
+func (s *Service) getQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id := ctx.Param("id")
+		var query datamodel.UserQueryModel
+		result := s.db.First(&query, id)
+		if result.Error != nil {
+			if result.Error == gorm.ErrRecordNotFound {
+				base.ResponseErr(ctx, http.StatusOK, "query not found")
+				return
+			}
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, Response{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: query,
+		})
+
+	}
+}
+
+func (s *Service) listQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		_, err := base.CurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var (
+			page     int
+			pageSize int
+		)
+		pageQuery := ctx.Query("page")
+		if vint, err := strconv.Atoi(pageQuery); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		} else {
+			page = vint
+		}
+
+		pageSizeQuery := ctx.Query("page_size")
+		if vint, err := strconv.Atoi(pageSizeQuery); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		} else {
+			pageSize = vint
+		}
+
+		sql := `
+		SELECT huq.*, hu.username, hu.email, hu.uid  FROM hyperdot_user_query as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
+		where huq.is_privacy=false ORDER BY updated_at ASC LIMIT ? offset (? - 1 ) * ?
+		`
+		rows, err := s.db.Raw(sql, pageSize, page, pageSize).Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var queries []ListResponseData
+		for rows.Next() {
+			var data ListResponseData
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+			queries = append(queries, data)
+		}
+
+		ctx.JSON(http.StatusOK, ListResponse{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: queries,
+		})
+	}
+}
+
+func (s *Service) createQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		currentUserId, err := base.CurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var request datamodel.UserQueryModel
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
+			return
+		}
+
+		if len(request.QueryEngine) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
+			return
+		}
+		if len(request.Query) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "query is required")
+			return
+		}
+
+		_, ok := s.engines[request.QueryEngine]
+		if !ok {
+			base.ResponseErr(ctx, http.StatusBadRequest, "The %s query engine unsupported now", request.QueryEngine)
+			return
+		}
+
+		request.UserID = currentUserId
+
+		if !request.Unsaved {
+			if len(request.Name) == 0 {
+				base.ResponseErr(ctx, http.StatusBadRequest, "name is required")
+				return
+			}
+		} else {
+			request.Name = "unsaved"
+		}
+
+		request.CreatedAt = time.Now()
+		request.UpdatedAt = time.Now()
+		result := s.db.Create(&request)
+		if result.Error != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, Response{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: request,
+		})
+	}
+}
+
 func (s *Service) updateHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
@@ -326,7 +469,7 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 		if !s.checkUserQueryModelRequest(ctx, &request) {
 			return
 		}
-
+		request.UpdatedAt = time.Now()
 		result := s.db.Save(&request)
 		if result.Error != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
@@ -362,6 +505,21 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    s.group + "/run",
 			Handler: s.runHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/:id",
+			Handler: s.getQueryHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group,
+			Handler: s.listQueryHandler(),
+		},
+		{
+			Method:  "POST",
+			Path:    s.group,
+			Handler: s.createQueryHandler(),
 		},
 		{
 			Method:  "PUT",

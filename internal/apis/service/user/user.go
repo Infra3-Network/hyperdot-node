@@ -2,9 +2,10 @@ package user
 
 import (
 	"errors"
-	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"net/http"
 	"net/url"
+
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 
 	"github.com/gin-gonic/gin"
 	_ "gorm.io/driver/postgres"
@@ -267,91 +268,6 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) getQueryHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		id := ctx.Param("id")
-		var query datamodel.UserQueryModel
-		result := s.db.First(&query, id)
-		if result.Error != nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				base.ResponseErr(ctx, http.StatusOK, "query not found")
-				return
-			}
-			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
-			return
-		}
-
-		ctx.JSON(http.StatusOK, QueryResponse{
-			BaseResponse: base.BaseResponse{
-				Success: true,
-			},
-			Data: query,
-		})
-
-	}
-}
-
-func (s *Service) createQueryHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		currentUserId, err := base.CurrentUserId(ctx)
-		if err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		var request datamodel.UserQueryModel
-		if err := ctx.ShouldBindJSON(&request); err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
-			return
-		}
-
-		if len(request.QueryEngine) == 0 {
-			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
-			return
-		}
-		if len(request.Query) == 0 {
-			base.ResponseErr(ctx, http.StatusBadRequest, "query is required")
-			return
-		}
-
-		_, ok := s.engines[request.QueryEngine]
-		if !ok {
-			base.ResponseErr(ctx, http.StatusBadRequest, "The %s query engine unsupported now", request.QueryEngine)
-			return
-		}
-
-		request.UserID = currentUserId
-
-		if !request.Unsaved {
-			if len(request.Name) == 0 {
-				base.ResponseErr(ctx, http.StatusBadRequest, "name is required")
-				return
-			}
-		} else {
-			request.Name = "unsaved"
-		}
-
-		result := s.db.Create(&request)
-		if result.Error != nil {
-			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
-			return
-		}
-
-		ctx.JSON(http.StatusOK, QueryResponse{
-			BaseResponse: base.BaseResponse{
-				Success: true,
-			},
-			Data: request,
-		})
-	}
-}
-
-func (s *Service) updateQueryhandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-
-	}
-}
-
 func (s *Service) Name() string {
 	return ServiceName
 }
@@ -359,11 +275,6 @@ func (s *Service) Name() string {
 func (s *Service) RouteTables() []base.RouteTable {
 	group := "user"
 	return []base.RouteTable{
-		//{
-		//	Method:  "POST",
-		//	Path:    group + "/auth/refreshToken",
-		//	Handler: s.refreshTokenHandler(),
-		//},
 		{
 			Method:  "GET",
 			Path:    group,
@@ -379,17 +290,6 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "POST",
 			Path:    group + "/auth/login",
 			Handler: s.loginHandle(),
-		},
-
-		{
-			Method:  "GET",
-			Path:    group + "/query/:id",
-			Handler: s.getQueryHandler(),
-		},
-		{
-			Method:  "POST",
-			Path:    group + "/query",
-			Handler: s.createQueryHandler(),
 		},
 	}
 }

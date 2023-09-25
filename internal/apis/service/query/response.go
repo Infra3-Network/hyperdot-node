@@ -20,3 +20,15 @@ type Response struct {
 	Data datamodel.UserQueryModel `json:"data"`
 	base.BaseResponse
 }
+
+type ListResponseData struct {
+	datamodel.UserQueryModel
+	Username string `json:"username"`
+	Uid      string `json:"uid"`
+	Email    string `json:"email"`
+}
+
+type ListResponse struct {
+	Data []ListResponseData `json:"data"`
+	base.BaseResponse
+}
