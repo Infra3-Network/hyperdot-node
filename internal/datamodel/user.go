@@ -65,10 +65,15 @@ func (signLogs UserSignLogs) Value() (driver.Value, error) {
 type UserBasic struct {
 	Provider          string     `json:"provider"`
 	UID               string     `gorm:"column:uid" json:"uid"`
-	EncryptedPassword string     `json:"encrypted_password"`
+	EncryptedPassword string     `json:"-"`
 	Username          string     `json:"username"`
 	Email             string     `json:"email"`
+	Bio               string     `json:"bio"`
 	IconUrl           string     `json:"icon_url"`
+	Twitter           string     `json:"twitter"`
+	Github            string     `json:"github"`
+	Telgram           string     `json:"telgram"`
+	Discord           string     `json:"discord"`
 	ConfirmedAt       *time.Time `json:"confirmed_at"`
 }
 

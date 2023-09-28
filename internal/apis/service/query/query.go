@@ -372,7 +372,7 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 
 		sql := `
 		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  FROM hyperdot_user_query as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
-		where huq.is_privacy=false ORDER BY updated_at ASC LIMIT ? offset (? - 1 ) * ?
+		where huq.is_privacy=false ORDER BY updated_at DESC LIMIT ? offset (? - 1 ) * ?
 		`
 		rows, err := s.db.Raw(sql, pageSize, page, pageSize).Rows()
 		if err != nil {
