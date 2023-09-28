@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -370,7 +371,7 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 		}
 
 		sql := `
-		SELECT huq.*, hu.username, hu.email, hu.uid  FROM hyperdot_user_query as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
+		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  FROM hyperdot_user_query as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
 		where huq.is_privacy=false ORDER BY updated_at ASC LIMIT ? offset (? - 1 ) * ?
 		`
 		rows, err := s.db.Raw(sql, pageSize, page, pageSize).Rows()
@@ -381,12 +382,22 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 
 		defer rows.Close()
 
-		var queries []ListResponseData
+		var queries []map[string]interface{}
 		for rows.Next() {
-			var data ListResponseData
+			data := make(map[string]interface{})
 			if err := s.db.ScanRows(rows, &data); err != nil {
 				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 				return
+			}
+			// convert chart string to structured chart
+			rawChart, ok := data["charts"]
+			if ok && rawChart != nil {
+				jsonChart := make([]map[string]interface{}, 0)
+				if err := json.Unmarshal([]byte(rawChart.(string)), &jsonChart); err != nil {
+					log.Printf("unmarshal chart error: %v", err)
+					continue
+				}
+				data["charts"] = jsonChart
 			}
 			queries = append(queries, data)
 		}

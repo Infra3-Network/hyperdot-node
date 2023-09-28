@@ -68,6 +68,7 @@ type UserBasic struct {
 	EncryptedPassword string     `json:"encrypted_password"`
 	Username          string     `json:"username"`
 	Email             string     `json:"email"`
+	IconUrl           string     `json:"icon_url"`
 	ConfirmedAt       *time.Time `json:"confirmed_at"`
 }
 
@@ -75,6 +76,10 @@ type UserBasic struct {
 type UserModel struct {
 	ID uint `gorm:"primarykey" json:"id"`
 	UserBasic
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt time.Time `json:"deleted_at"`
+
 	UserSignLogs
 }
 
@@ -94,17 +99,17 @@ func (UserModel) TableName() string {
 // UserQueryModel user query model
 type UserQueryModel struct {
 	ID          uint      `json:"id" gorm:"primarykey"`
-	UserID      uint      `json:"userId" gorm:"index:idx_user_query_user_id"`
+	UserID      uint      `json:"user_id" gorm:"index:idx_user_query_user_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Query       string    `json:"query"`
-	QueryEngine string    `json:"queryEngine"`
-	IsPrivacy   bool      `json:"isPrivacy"`
+	QueryEngine string    `json:"query_engine"`
+	IsPrivacy   bool      `json:"is_privacy"`
 	Unsaved     bool      `json:"unsaved"`
 	Stars       uint      `json:"stars"`
 	Charts      JSON      `json:"charts" gorm:"type:json"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	CreatedAt   time.Time `json:"created_At"`
+	UpdatedAt   time.Time `json:"updated_At"`
 }
 
 func (UserQueryModel) TableName() string {
