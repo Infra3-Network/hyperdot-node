@@ -47,6 +47,11 @@ func (s *Service) init() error {
 	if err := s.db.AutoMigrate(&datamodel.UserModel{}); err != nil {
 		return err
 	}
+
+	if err := s.db.AutoMigrate(&datamodel.UserStatistics{}); err != nil {
+		return err
+	}
+
 	if err := s.db.AutoMigrate(&datamodel.UserQueryModel{}); err != nil {
 		return err
 	}
@@ -82,33 +87,58 @@ func (s *Service) init() error {
 	//}))
 }
 
+func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {
+	sql := `SELECT u.id, u.uid, u.username, u.email, u.bio, u.icon_url, u.twitter, u.github, u.telgram, u.discord, 
+						u.confirmed_at, u.created_at, u.updated_at, us.stars, us.queries, us.dashboards FROM hyperdot_user as u LEFT JOIN 
+						hyperdot_user_statistics as us ON u.id = us.user_id WHERE u.id = ?`
+
+	rows, err := s.db.Raw(sql, id).Rows()
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var data GetUserResponseData
+	if !rows.Next() {
+		base.ResponseErr(ctx, http.StatusOK, "user not found")
+		return
+	}
+
+	if err := s.db.ScanRows(rows, &data); err != nil {
+		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, GetUserResponse{
+		Data: data,
+		BaseResponse: base.BaseResponse{
+			Success: true,
+		},
+	})
+}
+
+func (s *Service) getCurrentUserHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		s.getUserInternalHandler(userId, ctx)
+	}
+}
+
 func (s *Service) getUserHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		v, ok := ctx.Get("user_id")
-		if !ok {
-			base.ResponseErr(ctx, http.StatusUnauthorized, "Unauthorized")
+		id, err := base.GetUintParam(ctx, "id")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
-		userId := v.(uint)
-		var user datamodel.UserModel
-		result := s.db.First(&user, userId)
-		if result.Error != nil {
-			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
-				return
-			}
 
-			base.ResponseErr(ctx, http.StatusOK, "user not found")
-			return
-		}
-		user.EncryptedPassword = ""
-
-		ctx.JSON(http.StatusOK, GetUserResponse{
-			UserModel: user,
-			BaseResponse: base.BaseResponse{
-				Success: true,
-			},
-		})
+		s.getUserInternalHandler(id, ctx)
 	}
 }
 
@@ -278,6 +308,12 @@ func (s *Service) RouteTables() []base.RouteTable {
 		{
 			Method:  "GET",
 			Path:    group,
+			Handler: s.getCurrentUserHandler(),
+		},
+
+		{
+			Method:  "GET",
+			Path:    group + "/:id",
 			Handler: s.getUserHandler(),
 		},
 

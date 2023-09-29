@@ -229,7 +229,7 @@ func (s *Service) runHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		query := ctx.Query("q")
 		engineName := ctx.Query("engine")
-		_, err := base.CurrentUserId(ctx)
+		_, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -284,7 +284,7 @@ func (s *Service) runHandler() gin.HandlerFunc {
 }
 
 func (s *Service) checkUserQueryModelRequest(ctx *gin.Context, model *datamodel.UserQueryModel) bool {
-	currentUserId, err := base.CurrentUserId(ctx)
+	currentUserId, err := base.GetCurrentUserId(ctx)
 	if err != nil {
 		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 		return false
@@ -344,7 +344,7 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 
 func (s *Service) listQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		_, err := base.CurrentUserId(ctx)
+		_, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -411,9 +411,86 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) listUserQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		_, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		userId, err := base.GetUintParam(ctx, "userId")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var (
+			page     int
+			pageSize int
+		)
+		pageQuery := ctx.Query("page")
+		if vint, err := strconv.Atoi(pageQuery); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		} else {
+			page = vint
+		}
+
+		pageSizeQuery := ctx.Query("page_size")
+		if vint, err := strconv.Atoi(pageSizeQuery); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		} else {
+			pageSize = vint
+		}
+
+		sql := `
+		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  
+		FROM hyperdot_user_query as huq LEFT JOIN hyperdot_user as hu ON huq.user_id = hu.id 
+		where huq.user_id = ? and huq.is_privacy=false  ORDER BY updated_at DESC 
+		LIMIT ? offset (? - 1 ) * ?
+		`
+		rows, err := s.db.Raw(sql, userId, pageSize, page, pageSize).Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var queries []map[string]interface{}
+		for rows.Next() {
+			data := make(map[string]interface{})
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+			// convert chart string to structured chart
+			rawChart, ok := data["charts"]
+			if ok && rawChart != nil {
+				jsonChart := make([]map[string]interface{}, 0)
+				if err := json.Unmarshal([]byte(rawChart.(string)), &jsonChart); err != nil {
+					log.Printf("unmarshal chart error: %v", err)
+					continue
+				}
+				data["charts"] = jsonChart
+			}
+			queries = append(queries, data)
+		}
+
+		ctx.JSON(http.StatusOK, ListResponse{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: queries,
+		})
+	}
+}
+
 func (s *Service) createQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		currentUserId, err := base.CurrentUserId(ctx)
+		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -455,6 +532,36 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 		request.UpdatedAt = time.Now()
 		result := s.db.Create(&request)
 		if result.Error != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		// create or update statistics
+		var statistics datamodel.UserStatistics
+		result = s.db.Where("user_id", currentUserId).First(&statistics)
+		if result != nil {
+			if result.Error == gorm.ErrRecordNotFound {
+				statistics.Queries += 1
+				statistics.UserId = currentUserId
+				if err := s.db.Create(&statistics).Error; err != nil {
+					base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+					return
+				}
+				ctx.JSON(http.StatusOK, Response{
+					BaseResponse: base.BaseResponse{
+						Success: true,
+					},
+					Data: request,
+				})
+
+				return
+			}
+
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		if err := s.db.Model(&statistics).Update("queries", statistics.Queries+1).Error; err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
 			return
 		}
@@ -536,6 +643,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "PUT",
 			Path:    s.group,
 			Handler: s.updateHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/user/:userId",
+			Handler: s.listUserQueryHandler(),
 		},
 	}
 }

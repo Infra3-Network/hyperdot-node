@@ -101,6 +101,18 @@ func (UserModel) TableName() string {
 	return "hyperdot_user"
 }
 
+type UserStatistics struct {
+	ID         uint `json:"id" gorm:"primarykey"`
+	UserId     uint `json:"user_id" gorm:"index:idx_user_statistics_user_id"`
+	Stars      uint `json:"stars"`
+	Queries    uint `json:"queries"`
+	Dashboards uint `json:"dashboards"`
+}
+
+func (UserStatistics) TableName() string {
+	return "hyperdot_user_statistics"
+}
+
 // UserQueryModel user query model
 type UserQueryModel struct {
 	ID          uint      `json:"id" gorm:"primarykey"`
