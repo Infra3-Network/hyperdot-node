@@ -88,7 +88,7 @@ func (s *Service) init() error {
 }
 
 func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {
-	sql := `SELECT u.id, u.uid, u.username, u.email, u.bio, u.icon_url, u.twitter, u.github, u.telgram, u.discord, 
+	sql := `SELECT u.id, u.uid, u.username, u.email, u.encrypted_password, u.bio, u.icon_url, u.twitter, u.github, u.telgram, u.discord, u.location, 
 						u.confirmed_at, u.created_at, u.updated_at, us.stars, us.queries, us.dashboards FROM hyperdot_user as u LEFT JOIN 
 						hyperdot_user_statistics as us ON u.id = us.user_id WHERE u.id = ?`
 
@@ -139,6 +139,184 @@ func (s *Service) getUserHandler() gin.HandlerFunc {
 		}
 
 		s.getUserInternalHandler(id, ctx)
+	}
+}
+
+func (s *Service) updateUserHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var request datamodel.UserModel
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var user datamodel.UserModel
+		result := s.db.Where("id = ?", userId).First(&user)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				base.ResponseErr(ctx, http.StatusOK, "user not found")
+				return
+			}
+
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		if len(request.Bio) > 0 {
+			user.Bio = request.Bio
+		}
+
+		if len(request.Twitter) > 0 {
+			user.Twitter = request.Twitter
+		}
+
+		if len(request.Github) > 0 {
+			user.Github = request.Github
+		}
+
+		if len(request.Telgram) > 0 {
+			user.Telgram = request.Telgram
+		}
+
+		if len(request.Discord) > 0 {
+			user.Discord = request.Discord
+		}
+
+		if len(request.Location) > 0 {
+			user.Location = request.Location
+		}
+
+		if err := s.db.Save(&user).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, UpdateUserResponse{
+			Data: user,
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+		})
+
+	}
+}
+
+func (s *Service) updateEmailHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var request UpdateEmailRequest
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if len(request.NewEmail) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "New email is required")
+			return
+		}
+
+		var user datamodel.UserModel
+		result := s.db.Where("id = ?", userId).First(&user)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				base.ResponseErr(ctx, http.StatusOK, "user not found")
+				return
+			}
+
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		user.Email = request.NewEmail
+		if err := s.db.Save(&user).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, UpdateUserResponse{
+			Data: user,
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+		})
+	}
+}
+
+func (s *Service) updatePasswordHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var request UpdatePasswordRequest
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if len(request.CurrentPassword) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "current password is required")
+			return
+		}
+		if len(request.NewPassword) == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "new password is required")
+			return
+		}
+
+		var user datamodel.UserModel
+		result := s.db.Where("id = ?", userId).First(&user)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				base.ResponseErr(ctx, http.StatusOK, "user not found")
+				return
+			}
+
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		// check current pasword
+		if !verifyPassword(user.EncryptedPassword, request.CurrentPassword) {
+			base.ResponseErr(ctx, http.StatusBadRequest, "current password not match")
+			return
+		}
+
+		// check new password is same current password
+		if verifyPassword(user.EncryptedPassword, request.NewPassword) {
+			base.ResponseErr(ctx, http.StatusBadRequest, "password not change")
+			return
+		}
+
+		// update new password
+		encryptedPassword, err := generatePassword(request.NewPassword)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := s.db.Model(&user).Update("encrypted_password", encryptedPassword).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		ctx.JSON(http.StatusOK, UpdateUserResponse{
+			Data: user,
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+		})
 	}
 }
 
@@ -315,6 +493,22 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    group + "/:id",
 			Handler: s.getUserHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    group,
+			Handler: s.updateUserHandler(),
+		},
+
+		{
+			Method:  "PUT",
+			Path:    group + "/email",
+			Handler: s.updateEmailHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    group + "/password",
+			Handler: s.updatePasswordHandler(),
 		},
 
 		{

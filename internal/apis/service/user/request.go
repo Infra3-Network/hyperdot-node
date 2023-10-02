@@ -1,7 +1,5 @@
 package user
 
-import "infra-3.xyz/hyperdot-node/internal/datamodel"
-
 type CreateAccountRequest struct {
 	Provider string `json:"provider"`
 	UserId   string `json:"userId"`
@@ -20,6 +18,11 @@ type GetQueryRequest struct {
 	ID string `json:"id"`
 }
 
-type UpdateQueryRequest struct {
-	Data datamodel.UserQueryModel
+type UpdateEmailRequest struct {
+	NewEmail string `json:"new_email"`
+}
+
+type UpdatePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
 }

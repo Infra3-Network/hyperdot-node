@@ -11,6 +11,7 @@ type GetUserResponseData struct {
 	ID                string     `json:"id"`
 	UID               string     `json:"uid"`
 	Username          string     `json:"username"`
+	EncryptedPassword string     `json:"encrypted_password"`
 	Email             string     `json:"email"`
 	Bio               string     `json:"bio"`
 	IconUrl           string     `json:"icon_url"`
@@ -18,9 +19,10 @@ type GetUserResponseData struct {
 	Github            string     `json:"github"`
 	Telgram           string     `json:"telgram"`
 	Discord           string     `json:"discord"`
+	Location          string     `json:"location"`
 	ConfirmedAt       *time.Time `json:"confirmed_at"`
-	CreatedAt         *time.Time  `json:"created_at"`
-	UpdatedAt         *time.Time  `json:"updated_at"`
+	CreatedAt         *time.Time `json:"created_at"`
+	UpdatedAt         *time.Time `json:"updated_at"`
 	Stars             uint       `json:"stars"`
 	Queries           uint       `json:"queries"`
 	Dashboards        uint       `json:"dashboards"`
@@ -28,6 +30,11 @@ type GetUserResponseData struct {
 
 type GetUserResponse struct {
 	Data GetUserResponseData `json:"data"`
+	base.BaseResponse
+}
+
+type UpdateUserResponse struct {
+	Data datamodel.UserModel `json:"data"`
 	base.BaseResponse
 }
 

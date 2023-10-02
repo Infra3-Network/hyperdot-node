@@ -74,6 +74,7 @@ type UserBasic struct {
 	Github            string     `json:"github"`
 	Telgram           string     `json:"telgram"`
 	Discord           string     `json:"discord"`
+	Location          string     `json:"location"`
 	ConfirmedAt       *time.Time `json:"confirmed_at"`
 }
 
