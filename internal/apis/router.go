@@ -2,9 +2,11 @@ package apis
 
 import (
 	"fmt"
-	"infra-3.xyz/hyperdot-node/internal/apis/service/query"
-	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"net/http"
+
+	"infra-3.xyz/hyperdot-node/internal/apis/service/query"
+	"infra-3.xyz/hyperdot-node/internal/clients"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
@@ -51,16 +53,18 @@ type RouterBuilder struct {
 	boltStore   *store.BoltStore
 	db          *gorm.DB
 	cfg         *common.Config
+	s3Client    *clients.SimpleS3Cliet
 	engines     map[string]dataengine.QueryEngine
 }
 
-func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine) *RouterBuilder {
+func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
 		boltStore:   boltStore,
 		db:          db,
 		cfg:         cfg,
 		engines:     engines,
+		s3Client:    s3Client,
 	}
 }
 
@@ -80,7 +84,7 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 		//	svcs = append(svcs, svc)
 		//}
 		svcs = append(svcs, query.New(r.boltStore, r.cfg, r.db, r.engines))
-		svcs = append(svcs, user.New(r.db, r.engines))
+		svcs = append(svcs, user.New(r.db, r.engines, r.s3Client))
 		for _, svc := range svcs {
 			for _, table := range svc.RouteTables() {
 				router.Handle(table.Method, table.Path, table.Handler)

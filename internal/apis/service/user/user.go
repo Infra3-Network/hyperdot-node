@@ -2,9 +2,14 @@ package user
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
+	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
 
 	"github.com/gin-gonic/gin"
@@ -21,16 +26,19 @@ const (
 )
 
 type Service struct {
-	db *gorm.DB
+	db      *gorm.DB
+	s3Cliet *clients.SimpleS3Cliet
 	// auth          *auth.Auth
 	authProviders map[string]bool
 	engines       map[string]dataengine.QueryEngine
 }
 
 // New user service
-func New(db *gorm.DB, engines map[string]dataengine.QueryEngine) *Service {
-	svc := &Service{db: db,
+func New(db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) *Service {
+	svc := &Service{
+		db:      db,
 		engines: engines,
+		s3Cliet: s3Client,
 		authProviders: map[string]bool{
 			PasswordProvider: true,
 		},
@@ -320,6 +328,102 @@ func (s *Service) updatePasswordHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) uploadAvatarHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		file, err := ctx.FormFile("avatar")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		src, err := file.Open()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer src.Close()
+
+		filePath := fmt.Sprintf("avatars/user-%d-%s", userId, file.Filename)
+		if err := s.s3Cliet.MakeBucket(ctx, "hyperdot"); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		uploadInfo, err := s.s3Cliet.Put(ctx, "hyperdot", filePath, src, file.Size)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"message":     "upload avatar success",
+			"object_url":  uploadInfo.Location,
+			"object_size": uploadInfo.Size,
+			"object_key":  uploadInfo.Key,
+		})
+	}
+}
+
+func (s *Service) getAvatarHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var user datamodel.UserModel
+		result := s.db.Where("id = ?", userId).First(&user)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				base.ResponseErr(ctx, http.StatusOK, "user not found")
+				return
+			}
+
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		if len(user.IconUrl) == 0 {
+			base.ResponseErr(ctx, http.StatusOK, "user avatar not found")
+			return
+		}
+
+		obj, err := s.s3Cliet.Get(ctx, "hyperdot", user.IconUrl)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer obj.Close()
+
+		// get icon content type
+		var contentType string
+		seq := strings.Split(user.IconUrl, ".")
+		if len(seq) == 0 {
+			contentType = "image/jpeg"
+		} else {
+			contentType = "image/" + seq[len(seq)-1]
+		}
+
+		data, err := io.ReadAll(obj)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		ctx.Header("Content-Length", strconv.Itoa(len(data)))
+		ctx.Header("Content-Type", contentType)
+		ctx.Writer.Write(data)
+		ctx.Status(http.StatusOK)
+	}
+}
+
 func (s *Service) createAccountHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var request CreateAccountRequest
@@ -509,6 +613,16 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "PUT",
 			Path:    group + "/password",
 			Handler: s.updatePasswordHandler(),
+		},
+		{
+			Method:  "POST",
+			Path:    group + "/avatar/upload",
+			Handler: s.uploadAvatarHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    group + "/avatar",
+			Handler: s.getAvatarHandler(),
 		},
 
 		{

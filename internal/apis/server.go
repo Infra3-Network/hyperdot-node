@@ -2,13 +2,15 @@ package apis
 
 import (
 	"context"
-	"gorm.io/gorm"
-	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"gorm.io/gorm"
+	"infra-3.xyz/hyperdot-node/internal/clients"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 
 	"infra-3.xyz/hyperdot-node/internal/common"
 	"infra-3.xyz/hyperdot-node/internal/store"
@@ -19,8 +21,8 @@ type ApiServer struct {
 	srv *http.Server
 }
 
-func NewApiServer(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine) (*ApiServer, error) {
-	engine, err := NewRouterBuilder(boltStore, cfg, db, engines).Build()
+func NewApiServer(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) (*ApiServer, error) {
+	engine, err := NewRouterBuilder(boltStore, cfg, db, engines, s3Client).Build()
 	if err != nil {
 		return nil, err
 	}

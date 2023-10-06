@@ -30,10 +30,18 @@ type PostgresConfig struct {
 	TimeZone string `json:"tz"`
 }
 
+type S3Config struct {
+	Endpoint  string `json:"endpoint"`
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
+	UseSSL    bool   `json:"useSSL"`
+}
+
 type Config struct {
 	Polkaholic PolkaholicConfig `json:"polkaholic"`
 	ApiServer  ApiServerConfig  `json:"apiServer"`
 	Bigquery   BigQueryConfig   `json:"bigquery"`
 	LocalStore LocalStoreConfig `json:"localStore"`
 	Postgres   PostgresConfig   `json:"postgres"`
+	S3         S3Config         `json:"s3"`
 }

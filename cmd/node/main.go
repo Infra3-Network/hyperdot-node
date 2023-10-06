@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"log"
+	"os"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
-	"io"
-	"log"
-	"os"
 
 	"infra-3.xyz/hyperdot-node/internal/store"
 
@@ -119,6 +120,10 @@ func initEngines(cfg *common.Config) (map[string]dataengine.QueryEngine, error) 
 	return res, nil
 }
 
+func initS3Client(cfg *common.Config) (*clients.SimpleS3Cliet, error) {
+	return clients.NewSimpleS3Client(cfg.S3.Endpoint, cfg.S3.AccessKey, cfg.S3.SecretKey, cfg.S3.UseSSL), nil
+}
+
 func main() {
 	flag.Parse()
 
@@ -147,7 +152,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error initial query engines: %v", err)
 	}
-	apiserver, err := apis.NewApiServer(boltStore, cfg, db, engines)
+
+	s3Client, err := initS3Client(cfg)
+	if err != nil {
+		log.Fatalf("Error initial s3 client: %v", err)
+	}
+
+	apiserver, err := apis.NewApiServer(boltStore, cfg, db, engines, s3Client)
 	if err != nil {
 		log.Fatalf("Error creating apiserver: %v", err)
 	}

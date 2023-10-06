@@ -19,7 +19,19 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/var/lib/hyperdot/redis/data
-
+  
+  minio:
+    image: bitnami/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=hyperdot
+      - MINIO_ROOT_PASSWORD=hyperdot
+    volumes:
+      - /var/lib/hyperdot/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: always 
 volumes:
   postgres_data:
   redis_data:
