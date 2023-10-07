@@ -51,7 +51,6 @@ func New(db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clien
 
 // init user service
 func (s *Service) init() error {
-	// Migrate AuthIdentity model, AuthIdentity will be used to save auth info, like username/password, oauth token, you could change that.
 	if err := s.db.AutoMigrate(&datamodel.UserModel{}); err != nil {
 		return err
 	}
@@ -65,34 +64,6 @@ func (s *Service) init() error {
 	}
 
 	return nil
-	// Register Auth providers
-	// Allow use username/password
-	//s.auth.RegisterProvider(password.New(&password.Config{}))
-	//
-	//// Allow use Github
-	//s.auth.RegisterProvider(github.New(&github.Config{
-	//	ClientID:     "github client id",
-	//	ClientSecret: "github client secret",
-	//}))
-	//
-	//// Allow use Google
-	//s.auth.RegisterProvider(google.New(&google.Config{
-	//	ClientID:       "google client id",
-	//	ClientSecret:   "google client secret",
-	//	AllowedDomains: []string{}, // Accept all domains, instead you can pass a whitelist of acceptable domains
-	//}))
-	//
-	//// Allow use Facebook
-	//s.auth.RegisterProvider(facebook.New(&facebook.Config{
-	//	ClientID:     "facebook client id",
-	//	ClientSecret: "facebook client secret",
-	//}))
-	//
-	//// Allow use Twitter
-	//s.auth.RegisterProvider(twitter.New(&twitter.Config{
-	//	ClientID:     "twitter client id",
-	//	ClientSecret: "twitter client secret",
-	//}))
 }
 
 func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {
@@ -361,9 +332,13 @@ func (s *Service) uploadAvatarHandler() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, gin.H{
-			"message":     "upload avatar success",
-			"object_url":  uploadInfo.Location,
+		result := s.db.Model(&datamodel.UserModel{}).Where("id = ?", userId).Update("icon_url", uploadInfo.Key)
+		if result.Error != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		base.ResponseWithData(ctx, gin.H{
 			"object_size": uploadInfo.Size,
 			"object_key":  uploadInfo.Key,
 		})
@@ -419,7 +394,11 @@ func (s *Service) getAvatarHandler() gin.HandlerFunc {
 
 		ctx.Header("Content-Length", strconv.Itoa(len(data)))
 		ctx.Header("Content-Type", contentType)
-		ctx.Writer.Write(data)
+		if _, err := ctx.Writer.Write(data); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
 		ctx.Status(http.StatusOK)
 	}
 }

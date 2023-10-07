@@ -23,10 +23,10 @@
         "tz": "Asia/ShangHai"
     },
     "s3": {
-        "endpoint": "192.168.40.129:9000",
+        "endpoint": "127.0.0.1:9000",
         "useSSL": false,
-        "accessKey": "h98p7vYrg8dzmOJJiPun",
-        "secretKey": "FBj0WE1BMzYZGpmu12IniPU9VuHu71IADQD8WnzX"
+        "accessKey": "hyperdot",
+        "secretKey": "hyperdot"
     }
 
 }

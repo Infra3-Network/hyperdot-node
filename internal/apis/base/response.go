@@ -1,8 +1,9 @@
 package base
 
 import (
-	"cloud.google.com/go/bigquery"
 	"fmt"
+
+	"cloud.google.com/go/bigquery"
 	"github.com/gin-gonic/gin"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
@@ -31,6 +32,13 @@ func ResponseErr(ctx *gin.Context, code int, format string, args ...any) {
 		Success:      false,
 		ErrorCode:    Err,
 		ErrorMessage: fmt.Sprintf(format, args...),
+	})
+}
+
+func ResponseWithData(ctx *gin.Context, data map[string]any) {
+	ctx.JSON(200, gin.H{
+		"success": true,
+		"data":    data,
 	})
 }
 
