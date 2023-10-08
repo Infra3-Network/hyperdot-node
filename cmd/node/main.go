@@ -127,6 +127,14 @@ func initDB(cfg *common.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&datamodel.DashboardModel{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&datamodel.DashboardPanelModel{}); err != nil {
+		return nil, err
+	}
+
 	return db, nil
 
 }

@@ -10,6 +10,12 @@ type DashboardPanelModel struct {
 	ChartID     uint      `json:"chart_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	Type        int16     `json:"type"` // 0: Text, 1: Visualization
+	Text        string    `json:"text" gorm:"type:text"`
+	Width       string    `json:"width" gorm:"type:varchar(64)"`
+	Height      string    `json:"height" gorm:"type:varchar(64)"`
+	XPos        float64   `json:"x_pos"`
+	YPos        float64   `json:"y_pos"`
 	CreatedAt   time.Time `json:"created_At"`
 	UpdatedAt   time.Time `json:"updated_At"`
 }
@@ -26,6 +32,9 @@ type DashboardModel struct {
 	IsPrivacy   bool                  `json:"is_privacy"`
 	Stars       uint                  `json:"stars"`
 	Panels      []DashboardPanelModel `json:"panels" gorm:"-"`
+	CreatedAt   time.Time             `json:"created_At"`
+	UpdatedAt   time.Time             `json:"updated_At"`
+	DeletedAt   time.Time             `json:"deleted_at"`
 }
 
 func (DashboardModel) TableName() string {

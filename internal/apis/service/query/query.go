@@ -493,6 +493,55 @@ func (s *Service) listUserQueryHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		var charts []map[string]any
+		tb1 := datamodel.QueryModel{}.TableName()
+		tb2 := datamodel.ChartModel{}.TableName()
+		sql := `
+			SELECT tb1.*, tb2.id as chart_id, tb2.* FROM %s as tb1 LEFT JOIN %s as tb2 ON tb1.id = tb2.query_id WHERE tb1.user_id = ?
+		`
+
+		rows, err := s.db.Raw(fmt.Sprintf(sql, tb1, tb2), userId).Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		for rows.Next() {
+			row := make(map[string]any)
+			if err := s.db.ScanRows(rows, &row); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			// convert chart string to structured chart
+			chartConfig, ok := row["config"]
+			if ok && chartConfig != nil {
+				jsonChart := make(map[string]any, 0)
+				if err := json.Unmarshal([]byte(chartConfig.(string)), &jsonChart); err != nil {
+					log.Printf("unmarshal chart error: %v", err)
+					continue
+				}
+				row["config"] = jsonChart
+			}
+
+			charts = append(charts, row)
+
+		}
+
+		base.ResponseWithData(ctx, map[string]any{
+			"charts": charts,
+		})
+	}
+}
+
 func (s *Service) createQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
@@ -684,6 +733,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    s.group + "/user/:userId",
 			Handler: s.listUserQueryHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/chart/user",
+			Handler: s.listCurrentUserQueryChartHandler(),
 		},
 	}
 }
