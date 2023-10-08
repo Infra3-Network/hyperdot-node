@@ -17,7 +17,7 @@ type RunResponse struct {
 }
 
 type Response struct {
-	Data datamodel.UserQueryModel `json:"data"`
+	Data datamodel.QueryModel `json:"data"`
 	base.BaseResponse
 }
 

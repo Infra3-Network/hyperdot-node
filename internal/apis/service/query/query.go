@@ -283,7 +283,7 @@ func (s *Service) runHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) checkUserQueryModelRequest(ctx *gin.Context, model *datamodel.UserQueryModel) bool {
+func (s *Service) checkUserQueryModelRequest(ctx *gin.Context, model *datamodel.QueryModel) bool {
 	currentUserId, err := base.GetCurrentUserId(ctx)
 	if err != nil {
 		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
@@ -321,7 +321,7 @@ func (s *Service) checkUserQueryModelRequest(ctx *gin.Context, model *datamodel.
 func (s *Service) getQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := ctx.Param("id")
-		var query datamodel.UserQueryModel
+		var query datamodel.QueryModel
 		result := s.db.First(&query, id)
 		if result.Error != nil {
 			if result.Error == gorm.ErrRecordNotFound {
@@ -329,6 +329,11 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 				return
 			}
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+			return
+		}
+
+		if err := s.db.Where("query_id = ?", query.ID).Find(&query.Charts).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -371,7 +376,7 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 		}
 
 		sql := `
-		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  FROM hyperdot_user_query as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
+		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  FROM hyperdot_queries as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
 		where huq.is_privacy=false ORDER BY updated_at DESC LIMIT ? offset (? - 1 ) * ?
 		`
 		rows, err := s.db.Raw(sql, pageSize, page, pageSize).Rows()
@@ -447,7 +452,7 @@ func (s *Service) listUserQueryHandler() gin.HandlerFunc {
 
 		sql := `
 		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  
-		FROM hyperdot_user_query as huq LEFT JOIN hyperdot_user as hu ON huq.user_id = hu.id 
+		FROM hyperdot_queries as huq LEFT JOIN hyperdot_user as hu ON huq.user_id = hu.id 
 		where huq.user_id = ? and huq.is_privacy=false  ORDER BY updated_at DESC 
 		LIMIT ? offset (? - 1 ) * ?
 		`
@@ -496,7 +501,7 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 			return
 		}
 
-		var request datamodel.UserQueryModel
+		var request datamodel.QueryModel
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
 			return
@@ -530,6 +535,7 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 
 		request.CreatedAt = time.Now()
 		request.UpdatedAt = time.Now()
+
 		result := s.db.Create(&request)
 		if result.Error != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
@@ -539,7 +545,7 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 		// create or update statistics
 		var statistics datamodel.UserStatistics
 		result = s.db.Where("user_id", currentUserId).First(&statistics)
-		if result != nil {
+		if result.Error != nil {
 			if result.Error == gorm.ErrRecordNotFound {
 				statistics.Queries += 1
 				statistics.UserId = currentUserId
@@ -578,7 +584,13 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 func (s *Service) updateHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
-		var request datamodel.UserQueryModel
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		var request datamodel.QueryModel
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
 			return
@@ -588,9 +600,33 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 			return
 		}
 		request.UpdatedAt = time.Now()
-		result := s.db.Save(&request)
-		if result.Error != nil {
-			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
+
+		err = s.db.Transaction(func(tx *gorm.DB) error {
+			if err := s.db.Save(&request).Error; err != nil {
+				return err
+			}
+
+			var insertCharts []datamodel.ChartModel
+			for _, chart := range request.Charts {
+				insertCharts = append(insertCharts, datamodel.ChartModel{
+					Index:   uint32(chart.ID),
+					UserID:  userId,
+					Name:    chart.Name,
+					Type:    chart.Type,
+					QueryID: request.ID,
+					Config:  chart.Config,
+				})
+			}
+
+			if err := s.db.Create(&insertCharts).Error; err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
 

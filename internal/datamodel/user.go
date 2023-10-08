@@ -113,23 +113,3 @@ type UserStatistics struct {
 func (UserStatistics) TableName() string {
 	return "hyperdot_user_statistics"
 }
-
-// UserQueryModel user query model
-type UserQueryModel struct {
-	ID          uint      `json:"id" gorm:"primarykey"`
-	UserID      uint      `json:"user_id" gorm:"index:idx_user_query_user_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Query       string    `json:"query"`
-	QueryEngine string    `json:"query_engine"`
-	IsPrivacy   bool      `json:"is_privacy"`
-	Unsaved     bool      `json:"unsaved"`
-	Stars       uint      `json:"stars"`
-	Charts      JSON      `json:"charts" gorm:"type:json"`
-	CreatedAt   time.Time `json:"created_At"`
-	UpdatedAt   time.Time `json:"updated_At"`
-}
-
-func (UserQueryModel) TableName() string {
-	return "hyperdot_user_query"
-}

@@ -43,27 +43,7 @@ func New(db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clien
 			PasswordProvider: true,
 		},
 	}
-	if err := svc.init(); err != nil {
-		panic(err)
-	}
 	return svc
-}
-
-// init user service
-func (s *Service) init() error {
-	if err := s.db.AutoMigrate(&datamodel.UserModel{}); err != nil {
-		return err
-	}
-
-	if err := s.db.AutoMigrate(&datamodel.UserStatistics{}); err != nil {
-		return err
-	}
-
-	if err := s.db.AutoMigrate(&datamodel.UserQueryModel{}); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {

@@ -2,6 +2,7 @@ package base
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,7 +11,10 @@ import (
 func JwtAuthMiddleware() func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		// if url is /apis/v1/user/auth/login, next
-		if ctx.Request.URL.Path == "/apis/v1/user/auth/login" || ctx.Request.URL.Path == "/apis/v1/user/auth/createAccount" {
+		if ctx.Request.URL.Path == "/apis/v1/user/auth/login" ||
+			ctx.Request.URL.Path == "/apis/v1/user/auth/createAccount" ||
+			ctx.Request.URL.Path == "/apis/v1/file" ||
+			strings.Contains(ctx.Request.URL.Path, "/apis/v1/file") {
 			ctx.Next()
 			return
 		}

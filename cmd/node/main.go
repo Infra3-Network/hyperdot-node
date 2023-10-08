@@ -103,7 +103,32 @@ func initDB(cfg *common.Config) (*gorm.DB, error) {
 		cfg.Postgres.TimeZone,
 	)
 
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		SkipDefaultTransaction: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// execute auto migratre
+	if err := db.AutoMigrate(&datamodel.UserModel{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&datamodel.UserStatistics{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&datamodel.QueryModel{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&datamodel.ChartModel{}); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+
 }
 
 func initEngines(cfg *common.Config) (map[string]dataengine.QueryEngine, error) {
