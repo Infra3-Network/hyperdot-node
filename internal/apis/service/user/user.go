@@ -318,7 +318,7 @@ func (s *Service) uploadAvatarHandler() gin.HandlerFunc {
 			return
 		}
 
-		base.ResponseWithData(ctx, gin.H{
+		base.ResponseWithMap(ctx, gin.H{
 			"object_size": uploadInfo.Size,
 			"object_key":  uploadInfo.Key,
 		})

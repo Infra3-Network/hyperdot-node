@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"infra-3.xyz/hyperdot-node/internal/apis/service/dashboard"
 	"infra-3.xyz/hyperdot-node/internal/apis/service/file"
 	"infra-3.xyz/hyperdot-node/internal/apis/service/query"
 	"infra-3.xyz/hyperdot-node/internal/clients"
@@ -85,6 +86,7 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 		//	svcs = append(svcs, svc)
 		//}
 		svcs = append(svcs, query.New(r.boltStore, r.cfg, r.db, r.engines))
+		svcs = append(svcs, dashboard.New(r.db))
 		svcs = append(svcs, user.New(r.db, r.engines, r.s3Client))
 		svcs = append(svcs, file.New(r.s3Client))
 		for _, svc := range svcs {

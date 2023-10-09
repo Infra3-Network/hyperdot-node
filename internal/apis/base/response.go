@@ -35,7 +35,14 @@ func ResponseErr(ctx *gin.Context, code int, format string, args ...any) {
 	})
 }
 
-func ResponseWithData(ctx *gin.Context, data map[string]any) {
+func ResponseWithMap(ctx *gin.Context, data map[string]any) {
+	ctx.JSON(200, gin.H{
+		"success": true,
+		"data":    data,
+	})
+}
+
+func ResponseWithData(ctx *gin.Context, data any) {
 	ctx.JSON(200, gin.H{
 		"success": true,
 		"data":    data,

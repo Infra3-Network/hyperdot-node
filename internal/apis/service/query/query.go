@@ -536,7 +536,7 @@ func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 
 		}
 
-		base.ResponseWithData(ctx, map[string]any{
+		base.ResponseWithMap(ctx, map[string]any{
 			"charts": charts,
 		})
 	}
