@@ -376,8 +376,20 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 		}
 
 		sql := `
-		SELECT huq.*, hu.username, hu.email, hu.uid, hu.icon_url  FROM hyperdot_queries as huq JOIN hyperdot_user as hu ON huq.user_id = hu.id 
-		where huq.is_privacy=false ORDER BY updated_at DESC LIMIT ? offset (? - 1 ) * ?
+		SELECT
+			huq.*,
+			hu.username,
+			hu.email,
+			hu.uid,
+			hu.icon_url 
+		FROM
+			hyperdot_queries AS huq
+			JOIN hyperdot_user AS hu ON huq.user_id = hu.ID 
+		WHERE
+			huq.is_privacy = FALSE 
+		ORDER BY
+			updated_at DESC 
+			LIMIT ? OFFSET ( ? - 1 ) * ?
 		`
 		rows, err := s.db.Raw(sql, pageSize, page, pageSize).Rows()
 		if err != nil {
@@ -501,19 +513,49 @@ func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 			return
 		}
 
+		page, err := base.GetIntQuery(ctx, "page")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		pageSize, err := base.GetIntQuery(ctx, "page_size")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		var charts []map[string]any
-		tb1 := datamodel.QueryModel{}.TableName()
-		tb2 := datamodel.ChartModel{}.TableName()
+		tb1 := datamodel.ChartModel{}.TableName()
+		tb2 := datamodel.QueryModel{}.TableName()
 		sql := `
-			SELECT tb1.*, tb2.id as chart_id, tb2.* FROM %s as tb1 LEFT JOIN %s as tb2 ON tb1.id = tb2.query_id WHERE tb1.user_id = ?
+		SELECT
+			tb2.name AS query_name,
+			tb2.description AS query_description,
+			tb2.query,
+			tb2.query_engine,
+			tb2.is_privacy,
+			tb2.unsaved,
+			tb2.stars as query_stars,
+			tb2.created_at AS query_created_at,
+			tb2.updated_at AS query_updated_at,
+			tb1.id AS chart_id,
+			tb1.* 
+		FROM
+			%s AS tb1
+			LEFT JOIN %s AS tb2 ON tb1.query_id = tb2.id 
+		WHERE
+			tb1.user_id = ? 
+			LIMIT ? OFFSET ( ? - 1 ) * ?
 		`
 
-		rows, err := s.db.Raw(fmt.Sprintf(sql, tb1, tb2), userId).Rows()
+		rows, err := s.db.Raw(fmt.Sprintf(sql, tb1, tb2), userId, pageSize, page, pageSize).Rows()
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
 
+		defer rows.Close()
 		for rows.Next() {
 			row := make(map[string]any)
 			if err := s.db.ScanRows(rows, &row); err != nil {
@@ -536,9 +578,119 @@ func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 
 		}
 
+		sql = `
+		SELECT COUNT
+			( ID ) 
+		FROM
+			%s 
+		WHERE
+			user_id = ?
+		`
+
+		rows, err = s.db.Raw(fmt.Sprintf(sql, tb1), userId).Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+		var totalCount int
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &totalCount); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+		}
+
 		base.ResponseWithMap(ctx, map[string]any{
 			"charts": charts,
+			"total":  totalCount,
 		})
+	}
+}
+
+func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		id, err := base.GetUintParam(ctx, "id")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var needJoinQuery bool
+		if _, err := base.GetUIntQuery(ctx, "query_id"); err != nil {
+			if err == base.ErrQueryNotFound {
+				needJoinQuery = false
+			}
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		tb1 := datamodel.ChartModel{}.TableName()
+		tb2 := datamodel.QueryModel{}.TableName()
+
+		var sql string
+		if needJoinQuery {
+			sql = `
+			SELECT
+				tb2.name AS query_name,
+				tb2.description AS query_description,
+				tb2.query,
+				tb2.query_engine,
+				tb2.is_privacy,
+				tb2.unsaved,
+				tb2.stars as query_stars,
+				tb2.created_at AS query_created_at,
+				tb2.updated_at AS query_updated_at,
+				tb1.id AS chart_id,
+				tb1.* 
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.query_id = tb2.id 
+			WHERE
+				tb1.id = ? 
+				AND tb1.user_id = ? 
+			`
+			sql = fmt.Sprintf(sql, tb1, tb2)
+
+		} else {
+			sql = `
+			SELECT
+				tb1.id AS chart_id,
+				tb1.* 
+			FROM
+				%s AS tb1
+			WHERE
+				tb1.id = ? 
+				AND tb1.user_id = ? 
+			`
+			sql = fmt.Sprintf(sql, tb1)
+		}
+
+		rows, err := s.db.Raw(sql, id, userId).Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var chart map[string]any
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &chart); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithData(ctx, chart)
 	}
 }
 
@@ -736,8 +888,13 @@ func (s *Service) RouteTables() []base.RouteTable {
 		},
 		{
 			Method:  "GET",
-			Path:    s.group + "/chart/user",
+			Path:    s.group + "/user/chart",
 			Handler: s.listCurrentUserQueryChartHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/user/chart/:id",
+			Handler: s.getCurrentUserQueryChartHandler(),
 		},
 	}
 }
