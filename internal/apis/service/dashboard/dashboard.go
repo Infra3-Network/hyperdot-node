@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -34,6 +35,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    group + "/:id",
 			Handler: s.getDashboardHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    group,
+			Handler: s.listDashboardHandler(),
 		},
 		{
 			Method:  "POST",
@@ -75,6 +81,162 @@ func (s *Service) getDashboardHandler() gin.HandlerFunc {
 		}
 
 		base.ResponseWithData(ctx, dashboard)
+	}
+}
+
+func (s *Service) listDashboardHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		_, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var (
+			page     uint
+			pageSize uint
+			userId   uint
+		)
+
+		page, err = base.GetUIntQuery(ctx, "page")
+		if err != nil {
+			if err == base.ErrQueryNotFound {
+				page = 1
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		pageSize, err = base.GetUIntQuery(ctx, "page_size")
+		if err != nil {
+			if err == base.ErrQueryNotFound {
+				pageSize = 10
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		userId, err = base.GetUIntQuery(ctx, "user_id")
+		if err != nil {
+			if err == base.ErrQueryNotFound {
+				userId = 0
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		tb1 := datamodel.DashboardModel{}.TableName()
+		tb2 := datamodel.UserModel{}.TableName()
+
+		var raw *gorm.DB
+		if userId == 0 {
+			fmt.Println("userId == 0")
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.username,
+				tb2.email,
+				tb2.icon_url
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+			WHERE
+				tb1.is_privacy = FALSE 
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+		`
+			sql = fmt.Sprintf(sql, tb1, tb2)
+			raw = s.db.Raw(sql, pageSize, page, pageSize)
+		} else {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.username,
+				tb2.email,
+				tb2.icon_url
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb1.user_id = ?
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+		`
+			sql = fmt.Sprintf(sql, tb1, tb2)
+			raw = s.db.Raw(sql, userId, pageSize, page, pageSize)
+		}
+
+		rows, err := raw.Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var dashboards []map[string]interface{}
+		for rows.Next() {
+			data := make(map[string]interface{})
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			dashboards = append(dashboards, data)
+		}
+
+		var total uint
+		if userId == 0 {
+			sql := `
+			SELECT COUNT(tb1.id)
+			FROM
+				%s AS tb1
+			WHERE
+				tb1.is_privacy = FALSE;
+			`
+			sql = fmt.Sprintf(sql, tb1)
+			raw = s.db.Raw(sql)
+		} else {
+			sql := `
+			SELECT COUNT(tb1.id)
+			FROM
+				%s AS tb1
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb1.user_id = ?
+		`
+			sql = fmt.Sprintf(sql, tb1)
+			raw = s.db.Raw(sql, userId)
+		}
+
+		if rows, err = raw.Rows(); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &total); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithMap(ctx, map[string]interface{}{
+			"dashboards": dashboards,
+			"total":      total,
+		})
 	}
 }
 

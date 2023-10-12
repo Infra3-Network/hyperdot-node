@@ -332,7 +332,7 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 			return
 		}
 
-		if err := s.db.Where("query_id = ?", query.ID).Find(&query.Charts).Error; err != nil {
+		if err := s.db.Where("query_id = ? AND user_id = ?", query.ID, query.UserID).Find(&query.Charts).Error; err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -356,47 +356,82 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 		}
 
 		var (
-			page     int
-			pageSize int
+			page     uint
+			pageSize uint
+			userId   uint
 		)
-		pageQuery := ctx.Query("page")
-		if vint, err := strconv.Atoi(pageQuery); err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-			return
-		} else {
-			page = vint
+
+		if page, err = base.GetUIntQuery(ctx, "page"); err != nil {
+			if err == base.ErrQueryNotFound {
+				page = 1
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
 		}
 
-		pageSizeQuery := ctx.Query("page_size")
-		if vint, err := strconv.Atoi(pageSizeQuery); err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-			return
-		} else {
-			pageSize = vint
+		if pageSize, err = base.GetUIntQuery(ctx, "page_size"); err != nil {
+			if err == base.ErrQueryNotFound {
+				pageSize = 10
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			}
 		}
 
-		sql := `
-		SELECT
-			huq.*,
-			hu.username,
-			hu.email,
-			hu.uid,
-			hu.icon_url 
-		FROM
-			hyperdot_queries AS huq
-			JOIN hyperdot_user AS hu ON huq.user_id = hu.ID 
-		WHERE
-			huq.is_privacy = FALSE 
-		ORDER BY
-			updated_at DESC 
-			LIMIT ? OFFSET ( ? - 1 ) * ?
-		`
-		rows, err := s.db.Raw(sql, pageSize, page, pageSize).Rows()
+		if userId, err = base.GetUIntQuery(ctx, "user_id"); err != nil && err != base.ErrQueryNotFound {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var raw *gorm.DB
+		tb1 := datamodel.QueryModel{}.TableName()
+		tb2 := datamodel.UserModel{}.TableName()
+		if userId == 0 {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.email,
+				tb2.uid,
+				tb2.icon_url 
+			FROM
+				%s AS tb1
+				JOIN %s AS tb2 ON tb1.user_id = tb2.id
+			WHERE
+				tb1.is_privacy = FALSE 
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+			`
+			sql = fmt.Sprintf(sql, tb1, tb2)
+			raw = s.db.Raw(sql, pageSize, page, pageSize)
+		} else {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.email,
+				tb2.uid,
+				tb2.icon_url 
+			FROM
+				%s AS tb1
+				JOIN %s AS tb2 ON tb1.user_id = tb2.id
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb1.user_id = ?
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+			`
+			sql = fmt.Sprintf(sql, tb1, tb2)
+			raw = s.db.Raw(sql, userId, pageSize, page, pageSize)
+		}
+
+		rows, err := raw.Rows()
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
-
 		defer rows.Close()
 
 		var queries []map[string]interface{}
@@ -419,12 +454,53 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 			queries = append(queries, data)
 		}
 
-		ctx.JSON(http.StatusOK, ListResponse{
-			BaseResponse: base.BaseResponse{
-				Success: true,
-			},
-			Data: queries,
+		// get total
+		if userId == 0 {
+			sql := `
+			SELECT COUNT
+				( ID ) 
+			FROM
+				%s 
+			WHERE
+				is_privacy = FALSE
+			`
+			sql = fmt.Sprintf(sql, tb1)
+			raw = s.db.Raw(sql)
+		} else {
+			sql := `
+			SELECT COUNT
+				( ID ) 
+			FROM
+				%s 
+			WHERE
+				is_privacy = FALSE 
+				AND user_id = ?
+			`
+			sql = fmt.Sprintf(sql, tb1)
+			raw = s.db.Raw(sql, userId)
+		}
+
+		var total uint
+		if rows, err = raw.Rows(); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &total); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithMap(ctx, map[string]any{
+			"queries": queries,
+			"total":   total,
 		})
+
 	}
 }
 
@@ -513,22 +589,52 @@ func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 			return
 		}
 
-		page, err := base.GetIntQuery(ctx, "page")
+		s.listUserQueryChart(ctx, userId)
+	}
+}
+
+func (s *Service) listUserQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+
+		userId, err := base.GetUintParam(ctx, "userId")
 		if err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		pageSize, err := base.GetIntQuery(ctx, "page_size")
-		if err != nil {
+		s.listUserQueryChart(ctx, userId)
+	}
+}
+
+func (s *Service) listUserQueryChart(ctx *gin.Context, userId uint) {
+	var (
+		err      error
+		page     uint
+		pageSize uint
+	)
+
+	if page, err = base.GetUIntQuery(ctx, "page"); err != nil {
+		if err == base.ErrQueryNotFound {
+			page = 1
+		} else {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
+	}
 
-		var charts []map[string]any
-		tb1 := datamodel.ChartModel{}.TableName()
-		tb2 := datamodel.QueryModel{}.TableName()
-		sql := `
+	if pageSize, err = base.GetUIntQuery(ctx, "page_size"); err != nil {
+		if err == base.ErrQueryNotFound {
+			pageSize = 10
+		} else {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
+	var charts []map[string]any
+	tb1 := datamodel.ChartModel{}.TableName()
+	tb2 := datamodel.QueryModel{}.TableName()
+	sql := `
 		SELECT
 			tb2.name AS query_name,
 			tb2.description AS query_description,
@@ -549,36 +655,36 @@ func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 			LIMIT ? OFFSET ( ? - 1 ) * ?
 		`
 
-		rows, err := s.db.Raw(fmt.Sprintf(sql, tb1, tb2), userId, pageSize, page, pageSize).Rows()
-		if err != nil {
+	rows, err := s.db.Raw(fmt.Sprintf(sql, tb1, tb2), userId, pageSize, page, pageSize).Rows()
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		row := make(map[string]any)
+		if err := s.db.ScanRows(rows, &row); err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		defer rows.Close()
-		for rows.Next() {
-			row := make(map[string]any)
-			if err := s.db.ScanRows(rows, &row); err != nil {
-				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-				return
+		// convert chart string to structured chart
+		chartConfig, ok := row["config"]
+		if ok && chartConfig != nil {
+			jsonChart := make(map[string]any, 0)
+			if err := json.Unmarshal([]byte(chartConfig.(string)), &jsonChart); err != nil {
+				log.Printf("unmarshal chart error: %v", err)
+				continue
 			}
-
-			// convert chart string to structured chart
-			chartConfig, ok := row["config"]
-			if ok && chartConfig != nil {
-				jsonChart := make(map[string]any, 0)
-				if err := json.Unmarshal([]byte(chartConfig.(string)), &jsonChart); err != nil {
-					log.Printf("unmarshal chart error: %v", err)
-					continue
-				}
-				row["config"] = jsonChart
-			}
-
-			charts = append(charts, row)
-
+			row["config"] = jsonChart
 		}
 
-		sql = `
+		charts = append(charts, row)
+
+	}
+
+	sql = `
 		SELECT COUNT
 			( ID ) 
 		FROM
@@ -587,25 +693,24 @@ func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 			user_id = ?
 		`
 
-		rows, err = s.db.Raw(fmt.Sprintf(sql, tb1), userId).Rows()
-		if err != nil {
+	rows, err = s.db.Raw(fmt.Sprintf(sql, tb1), userId).Rows()
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+	var totalCount int
+	for rows.Next() {
+		if err := s.db.ScanRows(rows, &totalCount); err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
-		defer rows.Close()
-		var totalCount int
-		for rows.Next() {
-			if err := s.db.ScanRows(rows, &totalCount); err != nil {
-				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-				return
-			}
-		}
-
-		base.ResponseWithMap(ctx, map[string]any{
-			"charts": charts,
-			"total":  totalCount,
-		})
 	}
+
+	base.ResponseWithMap(ctx, map[string]any{
+		"charts": charts,
+		"total":  totalCount,
+	})
 }
 
 func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
@@ -616,27 +721,46 @@ func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
 			return
 		}
 
-		id, err := base.GetUintParam(ctx, "id")
+		s.getUserQueryChart(ctx, userId)
+
+	}
+}
+
+func (s *Service) getUserQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetUintParam(ctx, "userId")
 		if err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		var needJoinQuery bool
-		if _, err := base.GetUIntQuery(ctx, "query_id"); err != nil {
-			if err == base.ErrQueryNotFound {
-				needJoinQuery = false
-			}
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-			return
+		s.getUserQueryChart(ctx, userId)
+
+	}
+}
+
+func (s *Service) getUserQueryChart(ctx *gin.Context, userId uint) {
+	id, err := base.GetUintParam(ctx, "id")
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	needJoinQuery := true
+	if _, err := base.GetUIntQuery(ctx, "query_id"); err != nil {
+		if err == base.ErrQueryNotFound {
+			needJoinQuery = false
 		}
+		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
 
-		tb1 := datamodel.ChartModel{}.TableName()
-		tb2 := datamodel.QueryModel{}.TableName()
+	tb1 := datamodel.ChartModel{}.TableName()
+	tb2 := datamodel.QueryModel{}.TableName()
 
-		var sql string
-		if needJoinQuery {
-			sql = `
+	var sql string
+	if needJoinQuery {
+		sql = `
 			SELECT
 				tb2.name AS query_name,
 				tb2.description AS query_description,
@@ -656,10 +780,11 @@ func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
 				tb1.id = ? 
 				AND tb1.user_id = ? 
 			`
-			sql = fmt.Sprintf(sql, tb1, tb2)
+		sql = fmt.Sprintf(sql, tb1, tb2)
+		fmt.Println(sql)
 
-		} else {
-			sql = `
+	} else {
+		sql = `
 			SELECT
 				tb1.id AS chart_id,
 				tb1.* 
@@ -669,29 +794,28 @@ func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
 				tb1.id = ? 
 				AND tb1.user_id = ? 
 			`
-			sql = fmt.Sprintf(sql, tb1)
-		}
+		sql = fmt.Sprintf(sql, tb1)
+	}
 
-		rows, err := s.db.Raw(sql, id, userId).Rows()
-		if err != nil {
+	rows, err := s.db.Raw(sql, id, userId).Rows()
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	defer rows.Close()
+
+	var chart map[string]any
+	for rows.Next() {
+		if err := s.db.ScanRows(rows, &chart); err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
+		} else {
+			break
 		}
-
-		defer rows.Close()
-
-		var chart map[string]any
-		for rows.Next() {
-			if err := s.db.ScanRows(rows, &chart); err != nil {
-				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-				return
-			} else {
-				break
-			}
-		}
-
-		base.ResponseWithData(ctx, chart)
 	}
+
+	base.ResponseWithData(ctx, chart)
 }
 
 func (s *Service) createQueryHandler() gin.HandlerFunc {
@@ -801,6 +925,7 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 			return
 		}
 		request.UpdatedAt = time.Now()
+		request.Unsaved = false
 
 		err = s.db.Transaction(func(tx *gorm.DB) error {
 			if err := s.db.Save(&request).Error; err != nil {
@@ -819,7 +944,7 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 				})
 			}
 
-			if err := s.db.Create(&insertCharts).Error; err != nil {
+			if err := s.db.Save(&insertCharts).Error; err != nil {
 				return err
 			}
 
@@ -888,13 +1013,23 @@ func (s *Service) RouteTables() []base.RouteTable {
 		},
 		{
 			Method:  "GET",
-			Path:    s.group + "/user/chart",
+			Path:    s.group + "/charts",
 			Handler: s.listCurrentUserQueryChartHandler(),
 		},
 		{
 			Method:  "GET",
-			Path:    s.group + "/user/chart/:id",
+			Path:    s.group + "/charts/user/:userId",
+			Handler: s.listUserQueryChartHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/chart/:id",
 			Handler: s.getCurrentUserQueryChartHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/chart/:id/user/:userId",
+			Handler: s.getUserQueryChartHandler(),
 		},
 	}
 }
