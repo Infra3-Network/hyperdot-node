@@ -935,12 +935,13 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 			var insertCharts []datamodel.ChartModel
 			for _, chart := range request.Charts {
 				insertCharts = append(insertCharts, datamodel.ChartModel{
-					Index:   uint32(chart.ID),
-					UserID:  userId,
-					Name:    chart.Name,
-					Type:    chart.Type,
-					QueryID: request.ID,
-					Config:  chart.Config,
+					Index:     chart.Index,
+					QueryID:   request.ID,
+					UserID:    userId,
+					Name:      chart.Name,
+					Type:      chart.Type,
+					Closeable: chart.Closeable,
+					Config:    chart.Config,
 				})
 			}
 
