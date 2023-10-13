@@ -349,7 +349,7 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 
 func (s *Service) listQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		_, err := base.GetCurrentUserId(ctx)
+		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -386,6 +386,7 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 		var raw *gorm.DB
 		tb1 := datamodel.QueryModel{}.TableName()
 		tb2 := datamodel.UserModel{}.TableName()
+		tb3 := datamodel.UserQueryFavorites{}.TableName()
 		if userId == 0 {
 			sql := `
 			SELECT
@@ -393,18 +394,20 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 				tb2.username,
 				tb2.email,
 				tb2.uid,
-				tb2.icon_url 
+				tb2.icon_url,
+				tb3.stared
 			FROM
 				%s AS tb1
-				JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
 			WHERE
 				tb1.is_privacy = FALSE 
 			ORDER BY
 				updated_at DESC 
 				LIMIT ? OFFSET ( ? - 1 ) * ?
 			`
-			sql = fmt.Sprintf(sql, tb1, tb2)
-			raw = s.db.Raw(sql, pageSize, page, pageSize)
+			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
+			raw = s.db.Raw(sql, currentUserId, pageSize, page, pageSize)
 		} else {
 			sql := `
 			SELECT
@@ -412,10 +415,12 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 				tb2.username,
 				tb2.email,
 				tb2.uid,
-				tb2.icon_url 
+				tb2.icon_url,
+				tb3.stared
 			FROM
 				%s AS tb1
-				JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
 			WHERE
 				tb1.is_privacy = FALSE 
 				AND tb1.user_id = ?
@@ -423,8 +428,8 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 				updated_at DESC 
 				LIMIT ? OFFSET ( ? - 1 ) * ?
 			`
-			sql = fmt.Sprintf(sql, tb1, tb2)
-			raw = s.db.Raw(sql, userId, pageSize, page, pageSize)
+			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
+			raw = s.db.Raw(sql, currentUserId, userId, pageSize, page, pageSize)
 		}
 
 		rows, err := raw.Rows()
@@ -451,6 +456,14 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 				}
 				data["charts"] = jsonChart
 			}
+
+			var stars int64
+			if err = s.db.Table(tb3).Where("query_id = ? and stared = true", data["id"]).Count(&stars).Error; err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+			data["stars"] = stars
+
 			queries = append(queries, data)
 		}
 
@@ -953,6 +966,93 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) queryFavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		s.queryFavorite(ctx, true)
+	}
+}
+
+func (s *Service) queryUnfavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		s.queryFavorite(ctx, false)
+	}
+}
+
+func (s *Service) queryFavorite(ctx *gin.Context, star bool) {
+	userId, err := base.GetCurrentUserId(ctx)
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var request datamodel.UserQueryFavorites
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if request.QueryID == 0 {
+		base.ResponseErr(ctx, http.StatusBadRequest, "query id is required")
+		return
+	}
+
+	if request.QueryUserID == 0 {
+		base.ResponseErr(ctx, http.StatusBadRequest, "query user id is required")
+		return
+	}
+
+	var (
+		find   datamodel.UserQueryFavorites
+		finded bool = true
+	)
+	if err := s.db.Table(request.TableName()).Where("user_id = ? and query_id = ?", userId, request.QueryID).First(&find).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			finded = false
+		} else {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+	}
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if finded {
+			find.UpdatedAt = time.Now()
+			find.Stared = star
+			if err = tx.Where("user_id = ? and query_id = ?", userId, find.QueryID).Save(&find).Error; err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return err
+			}
+		} else {
+			find.UserID = userId
+			find.QueryID = request.QueryID
+			find.CreatedAt = time.Now()
+			find.Stared = star
+			if err := tx.Create(&find).Error; err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return err
+			}
+		}
+
+		expr := "stars + ?"
+		if !star {
+			expr = "stars - ?"
+		}
+		if err := s.db.Model(&datamodel.UserStatistics{}).Where("user_id = ?", request.QueryUserID).Update("stars", gorm.Expr(expr, 1)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	base.ResponseWithData(ctx, find)
+}
+
 func (s *Service) Name() string {
 	return Name
 }
@@ -1018,6 +1118,16 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    s.group + "/chart/:id/user/:userId",
 			Handler: s.getUserQueryChartHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    s.group + "/favorite",
+			Handler: s.queryFavoriteHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    s.group + "/unfavorite",
+			Handler: s.queryUnfavoriteHandler(),
 		},
 	}
 }

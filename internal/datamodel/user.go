@@ -128,12 +128,13 @@ func (UserDashboardFavorites) TableName() string {
 }
 
 type UserQueryFavorites struct {
-	ID        uint      `json:"id" gorm:"primarykey"`
-	UserID    uint      `json:"user_id" gorm:"index:idx_user_query_favorites_user_id"`
-	QueryID   uint      `json:"query_id" gorm:"index:idx_user_query_favorites_query_id"`
-	Stared    bool      `json:"stared"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uint      `json:"id" gorm:"primarykey"`
+	UserID      uint      `json:"user_id" gorm:"index:idx_user_query_favorites_user_id"`
+	QueryID     uint      `json:"query_id" gorm:"index:idx_user_query_favorites_query_id"`
+	QueryUserID uint      `json:"query_user_id" gorm:"-"`
+	Stared      bool      `json:"stared"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (UserQueryFavorites) TableName() string {

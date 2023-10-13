@@ -144,7 +144,6 @@ func (s *Service) listDashboardHandler() gin.HandlerFunc {
 
 		var raw *gorm.DB
 		if userId == 0 {
-			fmt.Println("userId == 0")
 			sql := `
 			SELECT
 				tb1.*,
@@ -210,7 +209,6 @@ func (s *Service) listDashboardHandler() gin.HandlerFunc {
 				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 				return
 			}
-
 			data["stars"] = stars
 
 			dashboards = append(dashboards, data)
