@@ -113,3 +113,29 @@ type UserStatistics struct {
 func (UserStatistics) TableName() string {
 	return "hyperdot_user_statistics"
 }
+
+type UserDashboardFavorites struct {
+	UserID          uint      `json:"user_id" gorm:"index:idx_user_dashboard_favorites_user_id"`
+	DashboardID     uint      `json:"dashboard_id" gorm:"index:idx_user_dashboard_favorites_dashboard_id"`
+	DashboardUserID uint      `json:"dashboard_user_id" gorm:"-"`
+	Stared          bool      `json:"stared"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+func (UserDashboardFavorites) TableName() string {
+	return "hyperdot_user_dashboard_favorites"
+}
+
+type UserQueryFavorites struct {
+	ID        uint      `json:"id" gorm:"primarykey"`
+	UserID    uint      `json:"user_id" gorm:"index:idx_user_query_favorites_user_id"`
+	QueryID   uint      `json:"query_id" gorm:"index:idx_user_query_favorites_query_id"`
+	Stared    bool      `json:"stared"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (UserQueryFavorites) TableName() string {
+	return "hyperdot_user_query_favorites"
+}

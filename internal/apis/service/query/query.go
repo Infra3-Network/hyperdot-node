@@ -909,7 +909,7 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 func (s *Service) updateHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
-		userId, err := base.GetCurrentUserId(ctx)
+		_, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
 			return
@@ -932,20 +932,7 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 				return err
 			}
 
-			var insertCharts []datamodel.ChartModel
-			for _, chart := range request.Charts {
-				insertCharts = append(insertCharts, datamodel.ChartModel{
-					Index:     chart.Index,
-					QueryID:   request.ID,
-					UserID:    userId,
-					Name:      chart.Name,
-					Type:      chart.Type,
-					Closeable: chart.Closeable,
-					Config:    chart.Config,
-				})
-			}
-
-			if err := s.db.Save(&insertCharts).Error; err != nil {
+			if err := s.db.Save(&request.Charts).Error; err != nil {
 				return err
 			}
 

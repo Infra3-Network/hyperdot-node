@@ -135,6 +135,14 @@ func initDB(cfg *common.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&datamodel.UserDashboardFavorites{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&datamodel.UserQueryFavorites{}); err != nil {
+		return nil, err
+	}
+
 	return db, nil
 
 }
@@ -166,9 +174,9 @@ func main() {
 		log.Fatalf("Error initial bolt store: %v", err)
 	}
 
-	if err := initialGlobalData(cfg, boltStore); err != nil {
-		log.Fatalf("Error initial global data: %v", err)
-	}
+	// if err := initialGlobalData(cfg, boltStore); err != nil {
+	// 	log.Fatalf("Error initial global data: %v", err)
+	// }
 
 	jobManager := jobs.NewJobManager(cfg)
 

@@ -539,6 +539,44 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) queryFavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var request datamodel.UserQueryFavorites
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if request.UserID == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "user id is required")
+			return
+		}
+
+		if request.UserID != userId {
+			base.ResponseErr(ctx, http.StatusBadRequest, "user id not match")
+			return
+		}
+
+		if request.QueryID == 0 {
+			base.ResponseErr(ctx, http.StatusBadRequest, "query id is required")
+			return
+		}
+
+		if err := s.db.Save(&request).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		base.ResponseWithData(ctx, request)
+	}
+}
+
 func (s *Service) Name() string {
 	return ServiceName
 }
@@ -593,6 +631,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "POST",
 			Path:    group + "/auth/login",
 			Handler: s.loginHandle(),
+		},
+		{
+			Method:  "PUT",
+			Path:    group + "/query/favorite",
+			Handler: s.queryFavoriteHandler(),
 		},
 	}
 }

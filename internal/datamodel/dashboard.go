@@ -30,7 +30,6 @@ type DashboardModel struct {
 	Name        string                `json:"name"`
 	Description string                `json:"description"`
 	IsPrivacy   bool                  `json:"is_privacy"`
-	Stars       uint                  `json:"stars"`
 	Panels      []DashboardPanelModel `json:"panels" gorm:"-"`
 	CreatedAt   time.Time             `json:"created_At"`
 	UpdatedAt   time.Time             `json:"updated_At"`
