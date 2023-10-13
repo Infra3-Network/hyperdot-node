@@ -261,6 +261,175 @@ func (s *Service) listDashboardHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) listFavoriteDashboardHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		currentUserId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var (
+			page     uint
+			pageSize uint
+			userId   uint
+		)
+
+		page, err = base.GetUIntQuery(ctx, "page")
+		if err != nil {
+			if err == base.ErrQueryNotFound {
+				page = 1
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		pageSize, err = base.GetUIntQuery(ctx, "page_size")
+		if err != nil {
+			if err == base.ErrQueryNotFound {
+				pageSize = 10
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		userId, err = base.GetUIntQuery(ctx, "user_id")
+		if err != nil {
+			if err == base.ErrQueryNotFound {
+				userId = 0
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		tb1 := datamodel.DashboardModel{}.TableName()
+		tb2 := datamodel.UserModel{}.TableName()
+		tb3 := datamodel.UserDashboardFavorites{}.TableName()
+
+		var raw *gorm.DB
+		if userId == 0 {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.username,
+				tb2.email,
+				tb2.icon_url,
+				tb3.stared
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb3.stared = TRUE
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+		`
+			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
+			raw = s.db.Raw(sql, currentUserId, pageSize, page, pageSize)
+		} else {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.username,
+				tb2.email,
+				tb2.icon_url,
+				tb3.stared
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb1.user_id = ?
+				AND tb3.stared = TRUE
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+		`
+			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
+			raw = s.db.Raw(sql, currentUserId, userId, pageSize, page, pageSize)
+		}
+
+		rows, err := raw.Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var dashboards []map[string]interface{}
+		for rows.Next() {
+			data := make(map[string]interface{})
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			var stars int64
+			if err = s.db.Table(tb3).Where("dashboard_id = ? and stared = true", data["id"]).Count(&stars).Error; err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+			data["stars"] = stars
+
+			dashboards = append(dashboards, data)
+		}
+
+		var total uint
+		if userId == 0 {
+			sql := `
+			SELECT COUNT(tb1.id)
+			FROM
+				%s AS tb1
+			WHERE
+				tb1.is_privacy = FALSE;
+			`
+			sql = fmt.Sprintf(sql, tb1)
+			raw = s.db.Raw(sql)
+		} else {
+			sql := `
+			SELECT COUNT(tb1.id)
+			FROM
+				%s AS tb1
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb1.user_id = ?
+		`
+			sql = fmt.Sprintf(sql, tb1)
+			raw = s.db.Raw(sql, userId)
+		}
+
+		if rows, err = raw.Rows(); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &total); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithMap(ctx, map[string]interface{}{
+			"dashboards": dashboards,
+			"total":      total,
+		})
+	}
+}
+
 func (s *Service) createDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
