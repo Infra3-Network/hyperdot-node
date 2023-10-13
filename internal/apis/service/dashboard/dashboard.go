@@ -42,6 +42,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Handler: s.listDashboardHandler(),
 		},
 		{
+			Method:  "GET",
+			Path:    group + "/favorite",
+			Handler: s.listFavoriteDashboardHandler(),
+		},
+		{
 			Method:  "POST",
 			Path:    group,
 			Handler: s.createDashboardHandler(),
@@ -389,22 +394,27 @@ func (s *Service) listFavoriteDashboardHandler() gin.HandlerFunc {
 			SELECT COUNT(tb1.id)
 			FROM
 				%s AS tb1
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
 			WHERE
-				tb1.is_privacy = FALSE;
+				tb1.is_privacy = FALSE
+				AND tb3.stared = TRUE;
 			`
-			sql = fmt.Sprintf(sql, tb1)
-			raw = s.db.Raw(sql)
+			sql = fmt.Sprintf(sql, tb1, tb3)
+			raw = s.db.Raw(sql, currentUserId)
 		} else {
 			sql := `
 			SELECT COUNT(tb1.id)
 			FROM
 				%s AS tb1
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
+
 			WHERE
 				tb1.is_privacy = FALSE 
 				AND tb1.user_id = ?
+				AND tb3.stared = TRUE;
 		`
-			sql = fmt.Sprintf(sql, tb1)
-			raw = s.db.Raw(sql, userId)
+			sql = fmt.Sprintf(sql, tb1, tb3)
+			raw = s.db.Raw(sql, currentUserId)
 		}
 
 		if rows, err = raw.Rows(); err != nil {

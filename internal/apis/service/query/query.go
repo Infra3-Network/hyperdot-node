@@ -517,6 +517,182 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) listFavoriteQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		currentUserId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var (
+			page     uint
+			pageSize uint
+			userId   uint
+		)
+
+		if page, err = base.GetUIntQuery(ctx, "page"); err != nil {
+			if err == base.ErrQueryNotFound {
+				page = 1
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		if pageSize, err = base.GetUIntQuery(ctx, "page_size"); err != nil {
+			if err == base.ErrQueryNotFound {
+				pageSize = 10
+			} else {
+				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			}
+		}
+
+		if userId, err = base.GetUIntQuery(ctx, "user_id"); err != nil && err != base.ErrQueryNotFound {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var raw *gorm.DB
+		tb1 := datamodel.QueryModel{}.TableName()
+		tb2 := datamodel.UserModel{}.TableName()
+		tb3 := datamodel.UserQueryFavorites{}.TableName()
+		if userId == 0 {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.email,
+				tb2.uid,
+				tb2.icon_url,
+				tb3.stared
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb3.stared = TRUE
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+			`
+			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
+			raw = s.db.Raw(sql, currentUserId, pageSize, page, pageSize)
+		} else {
+			sql := `
+			SELECT
+				tb1.*,
+				tb2.username,
+				tb2.email,
+				tb2.uid,
+				tb2.icon_url,
+				tb3.stared
+			FROM
+				%s AS tb1
+				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
+			WHERE
+				tb1.is_privacy = FALSE 
+				AND tb1.user_id = ?
+				AND tb3.stared = TRUE
+			ORDER BY
+				updated_at DESC 
+				LIMIT ? OFFSET ( ? - 1 ) * ?
+			`
+			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
+			raw = s.db.Raw(sql, currentUserId, userId, pageSize, page, pageSize)
+		}
+
+		rows, err := raw.Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+
+		var queries []map[string]interface{}
+		for rows.Next() {
+			data := make(map[string]interface{})
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+			// convert chart string to structured chart
+			rawChart, ok := data["charts"]
+			if ok && rawChart != nil {
+				jsonChart := make([]map[string]interface{}, 0)
+				if err := json.Unmarshal([]byte(rawChart.(string)), &jsonChart); err != nil {
+					log.Printf("unmarshal chart error: %v", err)
+					continue
+				}
+				data["charts"] = jsonChart
+			}
+
+			var stars int64
+			if err = s.db.Table(tb3).Where("query_id = ? and stared = true", data["id"]).Count(&stars).Error; err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+			data["stars"] = stars
+
+			queries = append(queries, data)
+		}
+
+		// get total
+		if userId == 0 {
+			sql := `
+			SELECT COUNT
+				( tb1.id ) 
+			FROM
+				%s as tb1
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
+			WHERE
+				is_privacy = FALSE
+				AND tb3.stared = TRUE;
+			`
+			sql = fmt.Sprintf(sql, tb1, tb3)
+			raw = s.db.Raw(sql, currentUserId)
+		} else {
+			sql := `
+			SELECT COUNT
+				( tb1.id ) 
+			FROM
+				%s as tb1
+				LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
+			WHERE
+				is_privacy = FALSE 
+				AND user_id = ?
+				AND tb3.stared = TRUE;
+			`
+			sql = fmt.Sprintf(sql, tb1, tb3)
+			raw = s.db.Raw(sql, currentUserId)
+		}
+
+		var total uint
+		if rows, err = raw.Rows(); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &total); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithMap(ctx, map[string]any{
+			"queries": queries,
+			"total":   total,
+		})
+
+	}
+}
+
 func (s *Service) listUserQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		_, err := base.GetCurrentUserId(ctx)
@@ -1083,6 +1259,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    s.group,
 			Handler: s.listQueryHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/favorite",
+			Handler: s.listFavoriteQueryHandler(),
 		},
 		{
 			Method:  "POST",
