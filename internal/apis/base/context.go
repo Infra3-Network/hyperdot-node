@@ -82,3 +82,12 @@ func GetUIntQueryRequired(ctx *gin.Context, key string) (uint, error) {
 	return uint(res), nil
 
 }
+
+func GetStringQuery(ctx *gin.Context, key string) (string, error) {
+	v := ctx.Query(key)
+	if len(v) == 0 {
+		return "", ErrQueryNotFound
+	}
+
+	return v, nil
+}
