@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -105,77 +104,81 @@ func (s *Service) getDashboardHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) getListParams(ctx *gin.Context) (*prePareListSQLParams, error) {
+	var (
+		err      error
+		page     uint
+		pageSize uint
+		userId   uint
+	)
+	page, err = base.GetUIntQuery(ctx, "page")
+	if err != nil {
+		if err == base.ErrQueryNotFound {
+			page = 1
+		} else {
+			return nil, err
+		}
+	}
+
+	pageSize, err = base.GetUIntQuery(ctx, "page_size")
+	if err != nil {
+		if err == base.ErrQueryNotFound {
+			pageSize = 10
+		} else {
+			return nil, err
+		}
+	}
+
+	userId, err = base.GetUIntQuery(ctx, "user_id")
+	if err != nil {
+		if err == base.ErrQueryNotFound {
+			userId = 0
+		} else {
+			return nil, err
+		}
+	}
+
+	timeRange, err := base.GetStringQuery(ctx, "time_range")
+	if err != nil {
+		if err == base.ErrQueryNotFound {
+			timeRange = "all"
+		} else {
+			return nil, err
+		}
+	}
+
+	order, err := base.GetStringQuery(ctx, "order")
+	if err != nil {
+		if err == base.ErrQueryNotFound {
+			order = "trending"
+		} else {
+			return nil, err
+		}
+	}
+
+	return &prePareListSQLParams{
+		Page:      page,
+		PageSize:  pageSize,
+		Order:     order,
+		UserID:    userId,
+		TimeRange: timeRange,
+	}, nil
+}
+
 func (s *Service) listDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		_, err := base.GetCurrentUserId(ctx)
+		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		var (
-			page     uint
-			pageSize uint
-			userId   uint
-		)
-
-		page, err = base.GetUIntQuery(ctx, "page")
+		params, err := s.getListParams(ctx)
 		if err != nil {
-			if err == base.ErrQueryNotFound {
-				page = 1
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
 		}
-
-		pageSize, err = base.GetUIntQuery(ctx, "page_size")
-		if err != nil {
-			if err == base.ErrQueryNotFound {
-				pageSize = 10
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
-		}
-
-		userId, err = base.GetUIntQuery(ctx, "user_id")
-		if err != nil {
-			if err == base.ErrQueryNotFound {
-				userId = 0
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
-		}
-
-		timeRange, err := base.GetStringQuery(ctx, "time_range")
-		if err != nil {
-			if err == base.ErrQueryNotFound {
-				timeRange = "all"
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
-		}
-
-		order, err := base.GetStringQuery(ctx, "order")
-		if err != nil {
-			if err == base.ErrQueryNotFound {
-				order = "trending"
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
-		}
-
-		params := prePareListSQLParams{
-			Page:      page,
-			PageSize:  pageSize,
-			Order:     order,
-			UserID:    userId,
-			TimeRange: timeRange,
-		}
+		params.CurrentUserId = currentUserId
 
 		queryRaw, countRaw, err := s.prepareListSQL(params)
 		if err != nil {
@@ -198,13 +201,6 @@ func (s *Service) listDashboardHandler() gin.HandlerFunc {
 				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 				return
 			}
-
-			// var stars int64
-			// if err = s.db.Table(tb3).Where("dashboard_id = ? and stared = true", data["id"]).Count(&stars).Error; err != nil {
-			// 	base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-			// 	return
-			// }
-			// data["stars"] = stars
 
 			dashboards = append(dashboards, data)
 		}
@@ -231,7 +227,6 @@ func (s *Service) listDashboardHandler() gin.HandlerFunc {
 			"total":      total,
 		})
 
-		return
 	}
 }
 
@@ -243,95 +238,20 @@ func (s *Service) listFavoriteDashboardHandler() gin.HandlerFunc {
 			return
 		}
 
-		var (
-			page     uint
-			pageSize uint
-			userId   uint
-		)
-
-		page, err = base.GetUIntQuery(ctx, "page")
+		params, err := s.getListParams(ctx)
 		if err != nil {
-			if err == base.ErrQueryNotFound {
-				page = 1
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
 		}
+		params.CurrentUserId = currentUserId
 
-		pageSize, err = base.GetUIntQuery(ctx, "page_size")
+		queryRaw, countRaw, err := s.prepareListStaredSQL(params)
 		if err != nil {
-			if err == base.ErrQueryNotFound {
-				pageSize = 10
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
 		}
 
-		userId, err = base.GetUIntQuery(ctx, "user_id")
-		if err != nil {
-			if err == base.ErrQueryNotFound {
-				userId = 0
-			} else {
-				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
-		}
-
-		tb1 := datamodel.DashboardModel{}.TableName()
-		tb2 := datamodel.UserModel{}.TableName()
-		tb3 := datamodel.UserDashboardFavorites{}.TableName()
-
-		var raw *gorm.DB
-		if userId == 0 {
-			sql := `
-			SELECT
-				tb1.*,
-				tb2.username,
-				tb2.username,
-				tb2.email,
-				tb2.icon_url,
-				tb3.stared
-			FROM
-				%s AS tb1
-				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
-				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
-			WHERE
-				tb1.is_privacy = FALSE 
-				AND tb3.stared = TRUE
-			ORDER BY
-				updated_at DESC 
-				LIMIT ? OFFSET ( ? - 1 ) * ?
-		`
-			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
-			raw = s.db.Raw(sql, currentUserId, pageSize, page, pageSize)
-		} else {
-			sql := `
-			SELECT
-				tb1.*,
-				tb2.username,
-				tb2.username,
-				tb2.email,
-				tb2.icon_url,
-				tb3.stared
-			FROM
-				%s AS tb1
-				LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
-				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
-			WHERE
-				tb1.is_privacy = FALSE 
-				AND tb1.user_id = ?
-				AND tb3.stared = TRUE
-			ORDER BY
-				updated_at DESC 
-				LIMIT ? OFFSET ( ? - 1 ) * ?
-		`
-			sql = fmt.Sprintf(sql, tb1, tb2, tb3)
-			raw = s.db.Raw(sql, currentUserId, userId, pageSize, page, pageSize)
-		}
-
-		rows, err := raw.Rows()
+		rows, err := queryRaw.Rows()
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
@@ -347,46 +267,12 @@ func (s *Service) listFavoriteDashboardHandler() gin.HandlerFunc {
 				return
 			}
 
-			var stars int64
-			if err = s.db.Table(tb3).Where("dashboard_id = ? and stared = true", data["id"]).Count(&stars).Error; err != nil {
-				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-				return
-			}
-			data["stars"] = stars
-
 			dashboards = append(dashboards, data)
 		}
 
 		var total uint
-		if userId == 0 {
-			sql := `
-			SELECT COUNT(tb1.id)
-			FROM
-				%s AS tb1
-				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
-			WHERE
-				tb1.is_privacy = FALSE
-				AND tb3.stared = TRUE;
-			`
-			sql = fmt.Sprintf(sql, tb1, tb3)
-			raw = s.db.Raw(sql, currentUserId)
-		} else {
-			sql := `
-			SELECT COUNT(tb1.id)
-			FROM
-				%s AS tb1
-				LEFT JOIN %s AS tb3 ON tb1.id = tb3.dashboard_id AND tb3.user_id = ?
 
-			WHERE
-				tb1.is_privacy = FALSE 
-				AND tb1.user_id = ?
-				AND tb3.stared = TRUE;
-		`
-			sql = fmt.Sprintf(sql, tb1, tb3)
-			raw = s.db.Raw(sql, currentUserId)
-		}
-
-		if rows, err = raw.Rows(); err != nil {
+		if rows, err = countRaw.Rows(); err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -418,7 +304,7 @@ func (s *Service) listPopularDashboardTags() gin.HandlerFunc {
 			}
 		}
 
-		raw, err := s.preparePopularDashboardTags(limit)
+		raw, err := s.preparePopularDashboardTagsSQL(limit)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
