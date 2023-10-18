@@ -47,3 +47,4 @@ vendor
 
 # Developer usage dir
 .local
+*__debug
