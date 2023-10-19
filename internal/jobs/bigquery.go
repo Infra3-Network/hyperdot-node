@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"infra-3.xyz/hyperdot-node/internal/cache"
-	"infra-3.xyz/hyperdot-node/internal/store"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"infra-3.xyz/hyperdot-node/internal/cache"
+	"infra-3.xyz/hyperdot-node/internal/store"
 
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/common"
@@ -59,6 +60,11 @@ func (f *BigQuerySyncer) Do() error {
 		return err
 	}
 
+	// set raw
+	if err := chainData.Raw.WriteToRedis(f.ctx, &f.cfg.Redis, "bigquery"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -91,14 +97,14 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 	}
 	defer resp.Body.Close()
 
-	var chains []datamodel.Chain
+	var chains []datamodel.ChainModel
 	err = json.NewDecoder(resp.Body).Decode(&chains)
 	if err != nil {
 		fmt.Println("Error decoding JSON response:", err)
 		return nil, err
 	}
 
-	var chainMap = make(map[int]datamodel.Chain, len(chains))
+	var chainMap = make(map[uint]datamodel.ChainModel, len(chains))
 	for _, chain := range chains {
 		chainMap[chain.ChainID] = chain
 	}
@@ -118,7 +124,7 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 				ChainID:   chain.ChainID,
 				Name:      chain.ChainName,
 				ShowColor: showColor,
-				ParaChainIDs: []int{
+				ParaChainIDs: []uint{
 					chain.ChainID,
 				},
 			}

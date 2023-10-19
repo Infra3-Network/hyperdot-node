@@ -2,7 +2,7 @@ package user
 
 type CreateAccountRequest struct {
 	Provider string `json:"provider"`
-	UserId   string `json:"userId"`
+	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }

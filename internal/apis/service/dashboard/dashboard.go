@@ -48,6 +48,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 		},
 		{
 			Method:  "GET",
+			Path:    group + "/browse",
+			Handler: s.listBrowseUserDashboardHandler(),
+		},
+		{
+			Method:  "GET",
 			Path:    group + "/tag/populars",
 			Handler: s.listPopularDashboardTags(),
 		},
@@ -371,6 +376,71 @@ func (s *Service) listPopularDashboardTags() gin.HandlerFunc {
 		base.ResponseWithData(ctx, tag2count)
 	}
 
+}
+
+func (s *Service) listBrowseUserDashboardHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		currentUserId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		params, err := s.getListParams(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		params.CurrentUserId = currentUserId
+
+		queryRaw, countRaw, err := s.prepateBrowseUserListSQL(params)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		rows, err := queryRaw.Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var dashboards []map[string]interface{}
+		for rows.Next() {
+			data := make(map[string]interface{})
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			dashboards = append(dashboards, data)
+		}
+
+		var total uint
+
+		if rows, err = countRaw.Rows(); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &total); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithMap(ctx, map[string]interface{}{
+			"dashboards": dashboards,
+			"total":      total,
+		})
+	}
 }
 
 func (s *Service) createDashboardHandler() gin.HandlerFunc {

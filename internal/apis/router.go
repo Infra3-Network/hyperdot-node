@@ -7,6 +7,7 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/apis/service/dashboard"
 	"infra-3.xyz/hyperdot-node/internal/apis/service/file"
 	"infra-3.xyz/hyperdot-node/internal/apis/service/query"
+	"infra-3.xyz/hyperdot-node/internal/apis/service/system"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
 
@@ -59,7 +60,10 @@ type RouterBuilder struct {
 	engines     map[string]dataengine.QueryEngine
 }
 
-func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) *RouterBuilder {
+func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config,
+	db *gorm.DB,
+	engines map[string]dataengine.QueryEngine,
+	s3Client *clients.SimpleS3Cliet) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
 		boltStore:   boltStore,
@@ -85,6 +89,7 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 		//	}
 		//	svcs = append(svcs, svc)
 		//}
+		svcs = append(svcs, system.New(r.cfg))
 		svcs = append(svcs, query.New(r.boltStore, r.cfg, r.db, r.engines))
 		svcs = append(svcs, dashboard.New(r.db))
 		svcs = append(svcs, user.New(r.db, r.engines, r.s3Client))

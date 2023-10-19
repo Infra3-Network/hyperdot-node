@@ -114,20 +114,20 @@ func (s *Service) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 				chainTables[chainID] = append(chainTables[chainID], table.TableID)
 			}
 		}
-		ctx.JSON(200, base.GetQueryEngineDatasetResponse{
-			BaseResponse: base.ResponseOk(),
-			Data: struct {
-				Id          string                                   `json:"id"`
-				Chains      map[int]datamodel.Chain                  `json:"chains"`
-				RelayChains map[string]*datamodel.RelayChainMetadata `json:"relayChains"`
-				ChainTables map[int][]string                         `json:"chainTables"`
-			}(struct {
-				Id          string
-				Chains      map[int]datamodel.Chain
-				RelayChains map[string]*datamodel.RelayChainMetadata
-				ChainTables map[int][]string
-			}{Id: data.Id, Chains: data.Chains, RelayChains: data.RelayChains, ChainTables: chainTables}),
-		})
+		// ctx.JSON(200, base.GetQueryEngineDatasetResponse{
+		// 	BaseResponse: base.ResponseOk(),
+		// 	Data: struct {
+		// 		Id          string                                   `json:"id"`
+		// 		Chains      map[int]datamodel.Chain                  `json:"chains"`
+		// 		RelayChains map[string]*datamodel.RelayChainMetadata `json:"relayChains"`
+		// 		ChainTables map[int][]string                         `json:"chainTables"`
+		// 	}(struct {
+		// 		Id          string
+		// 		Chains      map[int]datamodel.Chain
+		// 		RelayChains map[string]*datamodel.RelayChainMetadata
+		// 		ChainTables map[int][]string
+		// 	}{Id: data.Id, Chains: data.Chains, RelayChains: data.RelayChains, ChainTables: chainTables}),
+		// })
 	}
 }
 
@@ -702,6 +702,71 @@ func (s *Service) listFavoriteQueryHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *Service) listBrowseQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		currentUserId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		params, err := s.getListParams(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		params.CurrentUserId = currentUserId
+
+		queryRaw, countRaw, err := s.prepateBrowseUserListSQL(params)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		rows, err := queryRaw.Rows()
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		var queries []map[string]interface{}
+		for rows.Next() {
+			data := make(map[string]interface{})
+			if err := s.db.ScanRows(rows, &data); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			queries = append(queries, data)
+		}
+
+		var total uint
+
+		if rows, err = countRaw.Rows(); err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := s.db.ScanRows(rows, &total); err != nil {
+				base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+				return
+			} else {
+				break
+			}
+		}
+
+		base.ResponseWithMap(ctx, map[string]interface{}{
+			"queries": queries,
+			"total":   total,
+		})
+	}
+}
+
 func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
@@ -1167,16 +1232,16 @@ func (s *Service) Name() string {
 
 func (s *Service) RouteTables() []base.RouteTable {
 	return []base.RouteTable{
-		{
-			Method:  "GET",
-			Path:    s.group + "/engines",
-			Handler: s.ListEnginesHandle(),
-		},
-		{
-			Method:  "GET",
-			Path:    s.group + "/engines/:engineId/datasets/:datasetId",
-			Handler: s.GetQueryEngineDatasetHandle(),
-		},
+		// {
+		// 	Method:  "GET",
+		// 	Path:    s.group + "/engines",
+		// 	Handler: s.ListEnginesHandle(),
+		// },
+		// {
+		// 	Method:  "GET",
+		// 	Path:    s.group + "/engines/:engineId/datasets/:datasetId",
+		// 	Handler: s.GetQueryEngineDatasetHandle(),
+		// },
 		{
 			Method:  "GET",
 			Path:    s.group + "/run",
@@ -1196,6 +1261,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    s.group + "/favorite",
 			Handler: s.listFavoriteQueryHandler(),
+		},
+		{
+			Method:  "GET",
+			Path:    s.group + "/browse",
+			Handler: s.listBrowseQueryHandler(),
 		},
 		{
 			Method:  "POST",

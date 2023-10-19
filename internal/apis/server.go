@@ -21,11 +21,14 @@ type ApiServer struct {
 	srv *http.Server
 }
 
-func NewApiServer(boltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) (*ApiServer, error) {
+func NewApiServer(boltStore *store.BoltStore, cfg *common.Config,
+	db *gorm.DB,
+	engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) (*ApiServer, error) {
 	engine, err := NewRouterBuilder(boltStore, cfg, db, engines, s3Client).Build()
 	if err != nil {
 		return nil, err
 	}
+
 	return &ApiServer{
 		cfg: *cfg,
 		srv: &http.Server{

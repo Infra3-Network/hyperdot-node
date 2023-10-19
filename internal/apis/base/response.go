@@ -2,6 +2,7 @@ package base
 
 import (
 	"fmt"
+	"net/http"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,12 @@ func ResponseOk() BaseResponse {
 	return BaseResponse{
 		Success: true,
 	}
+}
+
+func ResponseSuccess(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, BaseResponse{
+		Success: true,
+	})
 }
 
 func ResponseErr(ctx *gin.Context, code int, format string, args ...any) {
@@ -58,7 +65,7 @@ type GetQueryEngineDatasetResponse struct {
 	BaseResponse
 	Data struct {
 		Id          string                                   `json:"id"`
-		Chains      map[int]datamodel.Chain                  `json:"chains"`
+		Chains      map[int]datamodel.ChainModel             `json:"chains"`
 		RelayChains map[string]*datamodel.RelayChainMetadata `json:"relayChains"`
 		ChainTables map[int][]string                         `json:"chainTables"`
 	} `json:"data"`

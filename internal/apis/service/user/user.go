@@ -402,7 +402,7 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 
 		switch request.Provider {
 		case "password":
-			if len(request.UserId) == 0 {
+			if len(request.Username) == 0 {
 				base.ResponseErr(ctx, http.StatusBadRequest, "user name is required")
 				return
 			}
@@ -416,10 +416,10 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 			}
 
 			var existingUser datamodel.UserModel
-			result := s.db.Where("username = ? OR email = ?", request.UserId, request.Email).First(&existingUser)
+			result := s.db.Where("username = ? OR email = ?", request.Username, request.Email).First(&existingUser)
 			if result.Error == nil {
-				if existingUser.UID == request.UserId {
-					base.ResponseErr(ctx, http.StatusBadRequest, "the user %s already exists", request.UserId)
+				if existingUser.Username == request.Username {
+					base.ResponseErr(ctx, http.StatusBadRequest, "the user %s already exists", request.Username)
 				} else if existingUser.Email == request.Email {
 					base.ResponseErr(ctx, http.StatusBadRequest, "the email %s already exists", request.Email)
 				}
@@ -441,7 +441,7 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 					Provider: request.Provider,
 					// UID:      "", TODO, by uuid
 					Email:             request.Email,
-					Username:          request.UserId,
+					Username:          request.Username,
 					EncryptedPassword: encryptedPassword,
 				},
 			}
@@ -457,11 +457,11 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 			// 根据GitHub提供的信息创建用户账户
 
 		default:
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported provider"})
+			base.ResponseErr(ctx, http.StatusBadRequest, "unsupported provider %s", request.Provider)
 			return
 		}
 
-		ctx.JSON(http.StatusOK, gin.H{"message": "Account created successfully"})
+		base.ResponseSuccess(ctx)
 	}
 }
 

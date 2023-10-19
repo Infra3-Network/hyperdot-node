@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
@@ -58,9 +59,20 @@ func initialSystemConfig() *common.Config {
 	return config
 }
 
-func initialGlobalData(cfg *common.Config, boltStore *store.BoltStore) error {
+func initRedisClient(cfg *common.Config) (*redis.Client, error) {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: cfg.Redis.Addr,
+	})
+
+	return redisClient, nil
+}
+
+func initialGlobalData(ctx context.Context, cfg *common.Config, boltStore *store.BoltStore, redisClient *redis.Client) error {
+	if err := datamodel.InitQueryEngineMetadata(ctx, redisClient); err != nil {
+		return err
+	}
+
 	// Fetch chain metadata and initialize global cache
-	ctx := context.Background()
 	client, err := clients.NewSimpleBigQueryClient(ctx, cfg)
 	if err != nil {
 		return err
@@ -70,6 +82,10 @@ func initialGlobalData(cfg *common.Config, boltStore *store.BoltStore) error {
 
 	raw, err := jobs.BuildBigQueryEngineRawDataset(ctx, client, &cfg.Polkaholic)
 	if err != nil {
+		return err
+	}
+
+	if err := raw.WriteToRedis(ctx, &cfg.Redis, "bigquery"); err != nil {
 		return err
 	}
 
@@ -143,6 +159,10 @@ func initDB(cfg *common.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	if err := datamodel.HackAutoMigrate(db); err != nil {
+		return nil, err
+	}
+
 	return db, nil
 
 }
@@ -168,15 +188,21 @@ func initS3Client(cfg *common.Config) (*clients.SimpleS3Cliet, error) {
 func main() {
 	flag.Parse()
 
+	initCtx := context.Background()
 	cfg := initialSystemConfig()
 	boltStore, err := store.NewBoltStore(cfg)
 	if err != nil {
 		log.Fatalf("Error initial bolt store: %v", err)
 	}
 
-	// if err := initialGlobalData(cfg, boltStore); err != nil {
-	// 	log.Fatalf("Error initial global data: %v", err)
-	// }
+	redisClient, err := initRedisClient(cfg)
+	if err != nil {
+		log.Fatalf("Error initial redis client: %v", err)
+	}
+
+	if err := initialGlobalData(initCtx, cfg, boltStore, redisClient); err != nil {
+		log.Fatalf("Error initial global data: %v", err)
+	}
 
 	jobManager := jobs.NewJobManager(cfg)
 

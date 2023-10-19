@@ -37,6 +37,10 @@ type S3Config struct {
 	UseSSL    bool   `json:"useSSL"`
 }
 
+type RedisConfig struct {
+	Addr string `json:"addr"`
+}
+
 type Config struct {
 	Polkaholic PolkaholicConfig `json:"polkaholic"`
 	ApiServer  ApiServerConfig  `json:"apiServer"`
@@ -44,4 +48,5 @@ type Config struct {
 	LocalStore LocalStoreConfig `json:"localStore"`
 	Postgres   PostgresConfig   `json:"postgres"`
 	S3         S3Config         `json:"s3"`
+	Redis      RedisConfig      `json:"redis"`
 }
