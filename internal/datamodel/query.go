@@ -4,12 +4,11 @@ import "time"
 
 type ChartModel struct {
 	ID        uint   `json:"id" gorm:"primarykey"`
-	Index     uint32 `json:"index"`
 	QueryID   uint   `json:"query_id" gorm:"index:idx_charts_id"`
 	UserID    uint   `json:"user_id" gorm:"index:idx_charts_id"`
 	Name      string `json:"name"`
 	Type      string `json:"type"`
-	Closeable bool   `json:"closable"`
+	Closeable bool   `json:"closeable"`
 	Config    JSON   `json:"config" gorm:"type:json"`
 }
 

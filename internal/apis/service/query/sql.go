@@ -123,9 +123,9 @@ func (s *Service) prepareListSQL(params *prePareListSQLParams) (queryRaw *gorm.D
 	// TODO: default is trending
 	if params.TimeRange == "all" {
 		sql := fmt.Sprintf(prepareSql, tb1, tb2, tb3,
-			tb3,                   // tb4
-			"",                    // time range
-			"tb1.updated_at DESC", // order by
+			tb3,                  // tb4
+			"",                   // time range
+			"tb1.created_at ASC", // order by
 		)
 		queryRaw = s.db.Raw(sql, params.CurrentUserId, params.PageSize, params.Page, params.PageSize)
 
@@ -141,7 +141,7 @@ func (s *Service) prepareListSQL(params *prePareListSQLParams) (queryRaw *gorm.D
 			tb3, // tb4
 			fmt.Sprintf("AND tb1.created_at BETWEEN '%s' AND LOCALTIMESTAMP",
 				timeRangeFormat), // time range
-			"tb1.updated_at DESC ", // order by
+			"tb1.created_at DESC ", // order by
 		)
 		queryRaw = s.db.Raw(sql, params.CurrentUserId, params.PageSize, params.Page, params.PageSize)
 

@@ -331,7 +331,7 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 			return
 		}
 
-		if err := s.db.Where("query_id = ? AND user_id = ?", query.ID, query.UserID).Find(&query.Charts).Error; err != nil {
+		if err := s.db.Where("query_id = ? AND user_id = ?", query.ID, query.UserID).Order("id ASC").Find(&query.Charts).Error; err != nil {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
