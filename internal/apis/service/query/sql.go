@@ -109,9 +109,9 @@ func (s *Service) prepareListSQL(params *prePareListSQLParams) (queryRaw *gorm.D
 
 	if params.Order == "new" {
 		sql := fmt.Sprintf(prepareSql, tb1, tb2, tb3,
-			tb3,                   // tb4
-			"",                    // time range
-			"tb1.created_at DESC", // order by
+			tb3,                  // tb4
+			"",                   // time range
+			"tb1.created_at ASC", // order by
 		)
 		queryRaw = s.db.Raw(sql, params.CurrentUserId, params.PageSize, params.Page, params.PageSize)
 
