@@ -76,6 +76,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Path:    group + "/unfavorite",
 			Handler: s.dashboardUnfavoriteHandler(),
 		},
+		{
+			Method:  "DELETE",
+			Path:    group + "/panel/:panelId",
+			Handler: s.removeDashboardPanelHandler(),
+		},
 	}
 }
 
@@ -591,4 +596,21 @@ func (s *Service) dashboardFavorite(ctx *gin.Context, star bool) {
 	}
 
 	base.ResponseWithData(ctx, find)
+}
+
+func (s *Service) removeDashboardPanelHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		panelId, err := base.GetUintParam(ctx, "panelId")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := s.db.Where("id = ?", panelId).Delete(&datamodel.DashboardPanelModel{}).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		base.ResponseSuccess(ctx)
+	}
 }
