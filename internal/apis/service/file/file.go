@@ -81,9 +81,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 	group := "file"
 	return []base.RouteTable{
 		{
-			Method:  "GET",
-			Path:    group,
-			Handler: s.getFileHandler(),
+			Method:     "GET",
+			Path:       group,
+			Handler:    s.getFileHandler(),
+			AllowGuest: true,
+			Regexp:     "",
 		},
 	}
 }

@@ -623,14 +623,18 @@ func (s *Service) RouteTables() []base.RouteTable {
 		},
 
 		{
-			Method:  "POST",
-			Path:    group + "/auth/createAccount",
-			Handler: s.createAccountHandler(),
+			Method:     "POST",
+			Path:       group + "/auth/createAccount",
+			Handler:    s.createAccountHandler(),
+			AllowGuest: true,
+			Regexp:     "",
 		},
 		{
-			Method:  "POST",
-			Path:    group + "/auth/login",
-			Handler: s.loginHandle(),
+			Method:     "POST",
+			Path:       group + "/auth/login",
+			Handler:    s.loginHandle(),
+			AllowGuest: true,
+			Regexp:     "",
 		},
 		{
 			Method:  "PUT",

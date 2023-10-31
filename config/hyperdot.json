@@ -11,7 +11,7 @@
     },
     "localStore": {
         "bolt": {
-            "path": "../../.local/hyperdot.db"
+            "path": "./../../.local/hyperdot.db"
         }
     },
     "postgres": {

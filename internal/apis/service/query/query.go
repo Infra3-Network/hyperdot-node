@@ -1004,6 +1004,23 @@ func (s *Service) getUserQueryChart(ctx *gin.Context, userId uint) {
 	base.ResponseWithData(ctx, chart)
 }
 
+func (s *Service) removeQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := base.GetUintParam(ctx, "id")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := s.db.Where("id = ?", id).Delete(&datamodel.ChartModel{}).Error; err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		base.ResponseSuccess(ctx)
+	}
+}
+
 func (s *Service) createQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
@@ -1296,6 +1313,11 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Method:  "GET",
 			Path:    s.group + "/chart/:id/user/:userId",
 			Handler: s.getUserQueryChartHandler(),
+		},
+		{
+			Method:  "DELETE",
+			Path:    s.group + "/chart/:id/",
+			Handler: s.removeQueryChartHandler(),
 		},
 		{
 			Method:  "PUT",
