@@ -1109,7 +1109,7 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) updateHandler() gin.HandlerFunc {
+func (s *Service) updateQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
 		_, err := base.GetCurrentUserId(ctx)
@@ -1153,6 +1153,42 @@ func (s *Service) updateHandler() gin.HandlerFunc {
 			},
 			Data: request,
 		})
+	}
+}
+
+func (s *Service) deleteQueryHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		id, err := base.GetUintParam(ctx, "id")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// first delete related charts and then delete query using transaction
+		err = s.db.Transaction(func(tx *gorm.DB) error {
+			if err := s.db.Where("query_id = ?", id).Delete(&datamodel.ChartModel{}).Error; err != nil {
+				return err
+			}
+
+			if err := s.db.Where("id = ? and user_id = ?", id, userId).Delete(&datamodel.QueryModel{}).Error; err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		base.ResponseSuccess(ctx)
 	}
 }
 
@@ -1275,6 +1311,21 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Handler: s.listQueryHandler(),
 		},
 		{
+			Method:  "POST",
+			Path:    s.group,
+			Handler: s.createQueryHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    s.group,
+			Handler: s.updateQueryHandler(),
+		},
+		{
+			Method:  "DELETE",
+			Path:    s.group + "/:id",
+			Handler: s.deleteQueryHandler(),
+		},
+		{
 			Method:  "GET",
 			Path:    s.group + "/favorite",
 			Handler: s.listFavoriteQueryHandler(),
@@ -1284,16 +1335,7 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Path:    s.group + "/browse",
 			Handler: s.listBrowseQueryHandler(),
 		},
-		{
-			Method:  "POST",
-			Path:    s.group,
-			Handler: s.createQueryHandler(),
-		},
-		{
-			Method:  "PUT",
-			Path:    s.group,
-			Handler: s.updateHandler(),
-		},
+
 		{
 			Method:  "GET",
 			Path:    s.group + "/charts",

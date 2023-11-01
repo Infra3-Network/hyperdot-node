@@ -42,6 +42,21 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Handler: s.listDashboardHandler(),
 		},
 		{
+			Method:  "POST",
+			Path:    group,
+			Handler: s.createDashboardHandler(),
+		},
+		{
+			Method:  "PUT",
+			Path:    group,
+			Handler: s.updateDashboardHandler(),
+		},
+		{
+			Method:  "DELETE",
+			Path:    group + "/:id",
+			Handler: s.deleteDashboardHandler(),
+		},
+		{
 			Method:  "GET",
 			Path:    group + "/favorite",
 			Handler: s.listFavoriteDashboardHandler(),
@@ -56,16 +71,7 @@ func (s *Service) RouteTables() []base.RouteTable {
 			Path:    group + "/tag/populars",
 			Handler: s.listPopularDashboardTags(),
 		},
-		{
-			Method:  "POST",
-			Path:    group,
-			Handler: s.createDashboardHandler(),
-		},
-		{
-			Method:  "PUT",
-			Path:    group,
-			Handler: s.updateDashboardHandler(),
-		},
+
 		{
 			Method:  "PUT",
 			Path:    group + "/favorite",
@@ -508,6 +514,42 @@ func (s *Service) updateDashboardHandler() gin.HandlerFunc {
 		}
 
 		base.ResponseWithData(ctx, req)
+	}
+}
+
+func (s *Service) deleteDashboardHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		id, err := base.GetUintParam(ctx, "id")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// delete panels and then delete dashboard using transaction
+		err = s.db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("dashboard_id = ?", id).Delete(&datamodel.DashboardPanelModel{}).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Where("id = ? and user_id = ?", id, userId).Delete(&datamodel.DashboardModel{}).Error; err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		base.ResponseSuccess(ctx)
 	}
 }
 
