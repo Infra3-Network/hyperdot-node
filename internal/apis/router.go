@@ -100,8 +100,7 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 			}
 		}
 	}
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	//
+	router.GET("/swager/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	return engine, nil
 }

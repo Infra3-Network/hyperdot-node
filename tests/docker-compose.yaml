@@ -1,0 +1,29 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:16rc1
+    container_name: hyperdot-test-postgres
+    environment:
+      POSTGRES_DB: hyperdot
+      POSTGRES_USER: hyperdot
+      POSTGRES_PASSWORD: hyperdot
+    ports:
+      - "15432:5432"
+
+  redis:
+    image: redis:7
+    container_name: hyperdot-test-redis
+    ports:
+      - "16379:6379"
+  
+  minio:
+    image: bitnami/minio:latest
+    container_name: hyperdot-test-minio
+    environment:
+      - MINIO_ROOT_USER=hyperdot
+      - MINIO_ROOT_PASSWORD=hyperdot
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    restart: always 
+

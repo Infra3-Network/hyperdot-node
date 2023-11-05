@@ -14,6 +14,7 @@ func JwtAuthMiddleware() func(ctx *gin.Context) {
 		if ctx.Request.URL.Path == "/apis/v1/user/auth/login" ||
 			ctx.Request.URL.Path == "/apis/v1/user/auth/createAccount" ||
 			ctx.Request.URL.Path == "/apis/v1/file" ||
+			strings.Contains(ctx.Request.URL.Path, "swager") ||
 			strings.Contains(ctx.Request.URL.Path, "/apis/v1/file") {
 			ctx.Next()
 			return

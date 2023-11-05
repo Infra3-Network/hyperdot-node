@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/store"
 
 	"infra-3.xyz/hyperdot-node/internal/clients"
@@ -55,10 +54,10 @@ func (f *BigQuerySyncer) Do() error {
 		return err
 	}
 
-	cache.GlobalDataEngine.SetDatasets("bigquery", chainData) // TODO: should call SetDatasets
-	if err := f.boltStore.SetDatasets("bigquery", chainData); err != nil {
-		return err
-	}
+	// cache.GlobalDataEngine.SetDatasets("bigquery", chainData) // TODO: should call SetDatasets
+	// if err := f.boltStore.SetDatasets("bigquery", chainData); err != nil {
+	// 	return err
+	// }
 
 	// set raw
 	if err := chainData.Raw.WriteToRedis(f.ctx, &f.cfg.Redis, "bigquery"); err != nil {

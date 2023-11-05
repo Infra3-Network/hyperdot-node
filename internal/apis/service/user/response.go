@@ -7,7 +7,8 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
-type GetUserResponseData struct {
+// ResponseGetUserData is response of GET /user
+type ResponseGetUserData struct {
 	ID                string     `json:"id"`
 	UID               string     `json:"uid"`
 	Username          string     `json:"username"`
@@ -28,28 +29,37 @@ type GetUserResponseData struct {
 	Dashboards        uint       `json:"dashboards"`
 }
 
-type GetUserResponse struct {
-	Data GetUserResponseData `json:"data"`
+// ResponseGetUser is response of GET /user or GET /user/:id
+type ResponseGetUser struct {
 	base.BaseResponse
+	Data ResponseGetUserData `json:"data"`
 }
 
-type UpdateUserResponse struct {
+// ResponseGetUsers is response of PUT /user
+type ResponseUpdateUser struct {
 	Data datamodel.UserModel `json:"data"`
 	base.BaseResponse
 }
 
-type CreateAccountResponse struct {
-	base.BaseResponse
+// ResponseCreateAccount is response of POST /user/auth/createAccount
+type ResponseCreateAccount struct {
 }
 
-type LoginResponseData struct {
+type ResponseLogin struct {
 	Algorithm string `json:"algorithm"`
 	Token     string `json:"token"`
 }
 
-type LoginResponse struct {
-	Data LoginResponseData `json:"data"`
+// ResponseUploadAvatarData is data of response of POST /user/avatar/upload
+type ResponseUploadAvatarData struct {
+	Key     string `json:"key"`
+	Filsize int64  `json:"filesize"`
+}
+
+// ResponseUploadAvatar is response of POST /user/avatar/upload
+type ResponseUploadAvatar struct {
 	base.BaseResponse
+	Data ResponseUploadAvatarData `json:"data"`
 }
 
 type QueryResponse struct {

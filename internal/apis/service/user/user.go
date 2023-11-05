@@ -11,6 +11,7 @@ import (
 
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
+	"infra-3.xyz/hyperdot-node/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	_ "gorm.io/driver/postgres"
@@ -25,10 +26,10 @@ const (
 	PasswordProvider = "password"
 )
 
+// Service user service
 type Service struct {
-	db      *gorm.DB
-	s3Cliet *clients.SimpleS3Cliet
-	// auth          *auth.Auth
+	db            *gorm.DB
+	s3Cliet       *clients.SimpleS3Cliet
 	authProviders map[string]bool
 	engines       map[string]dataengine.QueryEngine
 }
@@ -58,7 +59,7 @@ func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {
 	}
 	defer rows.Close()
 
-	var data GetUserResponseData
+	var data ResponseGetUserData
 	if !rows.Next() {
 		base.ResponseErr(ctx, http.StatusOK, "user not found")
 		return
@@ -69,7 +70,7 @@ func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, GetUserResponse{
+	ctx.JSON(http.StatusOK, ResponseGetUser{
 		Data: data,
 		BaseResponse: base.BaseResponse{
 			Success: true,
@@ -77,7 +78,16 @@ func (s *Service) getUserInternalHandler(id uint, ctx *gin.Context) {
 	})
 }
 
-func (s *Service) getCurrentUserHandler() gin.HandlerFunc {
+// GetCurrentUserHandler Get the current logined user.
+// @Summary Get the current logined user.
+// @Description Get the current logined user.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Security ApiKeyAuth
+// @Success 200 {object} ResponseGetUser
+// @Router /user [get]
+func (s *Service) GetCurrentUserHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -89,7 +99,17 @@ func (s *Service) getCurrentUserHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) getUserHandler() gin.HandlerFunc {
+// GetUserHandler Get user by id.
+// @Summary Get user by id.
+// @Description Get user by id.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Security ApiKeyAuth
+// @Param id path int true "user id"
+// @Success 200 {object} ResponseGetUser
+// @Router /user/{id} [get]
+func (s *Service) GetUserHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := base.GetUintParam(ctx, "id")
 		if err != nil {
@@ -101,7 +121,18 @@ func (s *Service) getUserHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) updateUserHandler() gin.HandlerFunc {
+// UpdateUserHandler Update logined user info.
+// @Summary Update user info.
+// @Description Update user info.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "token"
+// @Param body body datamodel.UserModel true "update user request"
+// @Success 200 {object} ResponseUpdateUser
+// @Router /user [put]
+func (s *Service) UpdateUserHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -125,6 +156,14 @@ func (s *Service) updateUserHandler() gin.HandlerFunc {
 
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
 			return
+		}
+
+		if len(request.Username) > 0 {
+			if request.Username == user.Username {
+				base.ResponseErr(ctx, http.StatusOK, "username not change")
+				return
+			}
+			user.Username = request.Username
 		}
 
 		if len(request.Bio) > 0 {
@@ -156,7 +195,7 @@ func (s *Service) updateUserHandler() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, UpdateUserResponse{
+		ctx.JSON(http.StatusOK, ResponseUpdateUser{
 			Data: user,
 			BaseResponse: base.BaseResponse{
 				Success: true,
@@ -166,7 +205,18 @@ func (s *Service) updateUserHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) updateEmailHandler() gin.HandlerFunc {
+// UpdateEmailHandler Update logined user email.
+// @Summary Update user email.
+// @Description Update user email.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "token"
+// @Param body body RequestUpdateEmail true "update email request"
+// @Success 200 {object} ResponseUpdateUser
+// @Router /user/email [put]
+func (s *Service) UpdateEmailHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -174,7 +224,7 @@ func (s *Service) updateEmailHandler() gin.HandlerFunc {
 			return
 		}
 
-		var request UpdateEmailRequest
+		var request RequestUpdateEmail
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -203,7 +253,7 @@ func (s *Service) updateEmailHandler() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, UpdateUserResponse{
+		ctx.JSON(http.StatusOK, ResponseUpdateUser{
 			Data: user,
 			BaseResponse: base.BaseResponse{
 				Success: true,
@@ -212,7 +262,18 @@ func (s *Service) updateEmailHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) updatePasswordHandler() gin.HandlerFunc {
+// UpdatePasswordHandler Update logined user password.
+// @Summary Update user password.
+// @Description Update user password.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "token"
+// @Param body body RequestUpdatePassword true "update password request"
+// @Success 200 {object} ResponseUpdateUser
+// @Router /user/password [put]
+func (s *Service) UpdatePasswordHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -220,7 +281,7 @@ func (s *Service) updatePasswordHandler() gin.HandlerFunc {
 			return
 		}
 
-		var request UpdatePasswordRequest
+		var request RequestUpdatePassword
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -248,19 +309,20 @@ func (s *Service) updatePasswordHandler() gin.HandlerFunc {
 		}
 
 		// check current pasword
-		if !verifyPassword(user.EncryptedPassword, request.CurrentPassword) {
+		if !utils.VerifyPassword(user.EncryptedPassword, request.CurrentPassword) {
 			base.ResponseErr(ctx, http.StatusBadRequest, "current password not match")
 			return
 		}
 
 		// check new password is same current password
-		if verifyPassword(user.EncryptedPassword, request.NewPassword) {
+
+		if utils.VerifyPassword(user.EncryptedPassword, request.NewPassword) {
 			base.ResponseErr(ctx, http.StatusBadRequest, "password not change")
 			return
 		}
 
 		// update new password
-		encryptedPassword, err := generatePassword(request.NewPassword)
+		encryptedPassword, err := utils.GeneratePassword(request.NewPassword)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -270,7 +332,7 @@ func (s *Service) updatePasswordHandler() gin.HandlerFunc {
 			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
-		ctx.JSON(http.StatusOK, UpdateUserResponse{
+		ctx.JSON(http.StatusOK, ResponseUpdateUser{
 			Data: user,
 			BaseResponse: base.BaseResponse{
 				Success: true,
@@ -279,7 +341,18 @@ func (s *Service) updatePasswordHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) uploadAvatarHandler() gin.HandlerFunc {
+// UploadAvatarHandler Upload user avatar.
+// @Summary Upload user avatar.
+// @Description Upload user avatar.
+// @Tags user apis
+// @Accept multipart/form-data
+// @Produce application/json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "token"
+// @Param avatar formData file true "avatar file"
+// @Success 200 {object} ResponseUploadAvatar
+// @Router /user/avatar/upload [post]
+func (s *Service) UploadAvatarHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -318,14 +391,28 @@ func (s *Service) uploadAvatarHandler() gin.HandlerFunc {
 			return
 		}
 
-		base.ResponseWithMap(ctx, gin.H{
-			"object_size": uploadInfo.Size,
-			"object_key":  uploadInfo.Key,
+		ctx.JSON(http.StatusOK, ResponseUploadAvatar{
+			BaseResponse: base.BaseResponse{
+				Success: true,
+			},
+			Data: ResponseUploadAvatarData{
+				Key:     uploadInfo.Key,
+				Filsize: uploadInfo.Size,
+			},
 		})
 	}
 }
 
-func (s *Service) getAvatarHandler() gin.HandlerFunc {
+// GetAvatarHandler Get user avatar.
+// @Summary Get user avatar.
+// @Description Get user avatar.
+// @Tags user apis
+// @Accept application/json
+// @Produce image/jpeg
+// @Security ApiKeyAuth
+// @Param Authorization header string true "token"
+// @Router /user/avatar [get]
+func (s *Service) GetAvatarHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -383,9 +470,18 @@ func (s *Service) getAvatarHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) createAccountHandler() gin.HandlerFunc {
+// CreateAccountHandler Create account by username and password.
+// @Summary Create account by username and password.
+// @Description Create account by username and password.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Param body body RequestCreateAccount true "create account request"
+// @Success 200 {object} ResponseCreateAccount
+// @Router /user/auth/createAccount [post]
+func (s *Service) CreateAccountHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var request CreateAccountRequest
+		var request RequestCreateAccount
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -430,7 +526,7 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 				return
 			}
 
-			encryptedPassword, err := generatePassword(request.Password)
+			encryptedPassword, err := utils.GeneratePassword(request.Password)
 			if err != nil {
 				base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 				return
@@ -438,8 +534,7 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 
 			user := datamodel.UserModel{
 				UserBasic: datamodel.UserBasic{
-					Provider: request.Provider,
-					// UID:      "", TODO, by uuid
+					Provider:          request.Provider,
 					Email:             request.Email,
 					Username:          request.Username,
 					EncryptedPassword: encryptedPassword,
@@ -452,22 +547,33 @@ func (s *Service) createAccountHandler() gin.HandlerFunc {
 				return
 			}
 
+			base.ResponseWithData(ctx, ResponseCreateAccount{})
+			return
+
 		case "github":
-			// 实现GitHub注册逻辑
-			// 根据GitHub提供的信息创建用户账户
+			// TODO: support login by github
+			base.ResponseErr(ctx, http.StatusBadRequest, "unsupported provider %s", request.Provider)
+			return
 
 		default:
 			base.ResponseErr(ctx, http.StatusBadRequest, "unsupported provider %s", request.Provider)
 			return
 		}
-
-		base.ResponseSuccess(ctx)
 	}
 }
 
-func (s *Service) loginHandle() gin.HandlerFunc {
+// LoginHandle Login by username and password.
+// @Summary Login by username and password.
+// @Description Login by username and password.
+// @Tags user apis
+// @Accept application/json
+// @Produce application/json
+// @Param body body RequestLogin true "login request"
+// @Success 200 {object} ResponseLogin
+// @Router /user/auth/login [post]
+func (s *Service) LoginHandle() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var request LoginRequest
+		var request RequestLogin
 		if err := ctx.ShouldBindJSON(&request); err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
@@ -504,7 +610,7 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 				return
 			}
 
-			if !verifyPassword(existingUser.EncryptedPassword, request.Password) {
+			if !utils.VerifyPassword(existingUser.EncryptedPassword, request.Password) {
 				base.ResponseErr(ctx, http.StatusOK, "password not match")
 				return
 			}
@@ -522,14 +628,9 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 				Expires: expireAt,
 			})
 
-			ctx.JSON(http.StatusOK, LoginResponse{
-				BaseResponse: base.BaseResponse{
-					Success: true,
-				},
-				Data: LoginResponseData{
-					Algorithm: "HS256",
-					Token:     signing,
-				},
+			base.ResponseWithData(ctx, ResponseLogin{
+				Algorithm: "HS256",
+				Token:     signing,
 			})
 
 		default:
@@ -539,107 +640,66 @@ func (s *Service) loginHandle() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) queryFavoriteHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		userId, err := base.GetCurrentUserId(ctx)
-		if err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		var request datamodel.UserQueryFavorites
-		if err := ctx.ShouldBindJSON(&request); err != nil {
-			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		if request.UserID == 0 {
-			base.ResponseErr(ctx, http.StatusBadRequest, "user id is required")
-			return
-		}
-
-		if request.UserID != userId {
-			base.ResponseErr(ctx, http.StatusBadRequest, "user id not match")
-			return
-		}
-
-		if request.QueryID == 0 {
-			base.ResponseErr(ctx, http.StatusBadRequest, "query id is required")
-			return
-		}
-
-		if err := s.db.Save(&request).Error; err != nil {
-			base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		base.ResponseWithData(ctx, request)
-	}
-}
-
+// Name service name
 func (s *Service) Name() string {
 	return ServiceName
 }
 
+// RouteTables route tables
 func (s *Service) RouteTables() []base.RouteTable {
 	group := "user"
 	return []base.RouteTable{
 		{
 			Method:  "GET",
 			Path:    group,
-			Handler: s.getCurrentUserHandler(),
+			Handler: s.GetCurrentUserHandler(),
 		},
 
 		{
 			Method:  "GET",
 			Path:    group + "/:id",
-			Handler: s.getUserHandler(),
+			Handler: s.GetUserHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    group,
-			Handler: s.updateUserHandler(),
+			Handler: s.UpdateUserHandler(),
 		},
 
 		{
 			Method:  "PUT",
 			Path:    group + "/email",
-			Handler: s.updateEmailHandler(),
+			Handler: s.UpdateEmailHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    group + "/password",
-			Handler: s.updatePasswordHandler(),
+			Handler: s.UpdatePasswordHandler(),
 		},
 		{
 			Method:  "POST",
 			Path:    group + "/avatar/upload",
-			Handler: s.uploadAvatarHandler(),
+			Handler: s.UploadAvatarHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    group + "/avatar",
-			Handler: s.getAvatarHandler(),
+			Handler: s.GetAvatarHandler(),
 		},
 
 		{
 			Method:     "POST",
 			Path:       group + "/auth/createAccount",
-			Handler:    s.createAccountHandler(),
+			Handler:    s.CreateAccountHandler(),
 			AllowGuest: true,
 			Regexp:     "",
 		},
 		{
 			Method:     "POST",
 			Path:       group + "/auth/login",
-			Handler:    s.loginHandle(),
+			Handler:    s.LoginHandle(),
 			AllowGuest: true,
 			Regexp:     "",
-		},
-		{
-			Method:  "PUT",
-			Path:    group + "/query/favorite",
-			Handler: s.queryFavoriteHandler(),
 		},
 	}
 }

@@ -1,0 +1,35 @@
+{
+    "polkaholic": {
+        "apiKey": "aaed8e0afefcf294e146167fbca9814a",
+        "baseUrl": "https://api.polkaholic.io"
+    },
+    "apiserver": {
+        "addr": ":3032"
+    },
+    "bigquery": {
+        "projectId": "substarte-etl"
+    },
+    "localStore": {
+        "bolt": {
+            "path": "hyperdot.db"
+        }
+    },
+    "postgres": {
+        "host": "127.0.0.1",
+        "port": 15432,
+        "user": "hyperdot",
+        "password": "hyperdot",
+        "db": "hyperdot",
+        "tz": "Asia/ShangHai"
+    },
+    "s3": {
+        "endpoint": "127.0.0.1:19000",
+        "useSSL": false,
+        "accessKey": "hyperdot",
+        "secretKey": "hyperdot"
+    },
+    "redis": {
+        "addr": "127.0.0.1:16379"
+    }
+
+}

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
@@ -17,8 +18,9 @@ import (
 )
 
 type ApiServer struct {
-	cfg common.Config
-	srv *http.Server
+	cfg    common.Config
+	engine *gin.Engine
+	srv    *http.Server
 }
 
 func NewApiServer(boltStore *store.BoltStore, cfg *common.Config,
@@ -30,12 +32,17 @@ func NewApiServer(boltStore *store.BoltStore, cfg *common.Config,
 	}
 
 	return &ApiServer{
-		cfg: *cfg,
+		cfg:    *cfg,
+		engine: engine,
 		srv: &http.Server{
 			Addr:    cfg.ApiServer.Addr,
 			Handler: engine,
 		},
 	}, nil
+}
+
+func (s *ApiServer) GetEngine() *gin.Engine {
+	return s.engine
 }
 
 func (s *ApiServer) Start() error {

@@ -1,28 +1,27 @@
 package user
 
-type CreateAccountRequest struct {
+// RequestCreateAccount is request of POST /user/auth/createAccount
+type RequestCreateAccount struct {
 	Provider string `json:"provider"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type LoginRequest struct {
+// RequestLogin is request of POST /user/auth/login
+type RequestLogin struct {
 	Provider string `json:"provider"`
 	UserId   string `json:"userId"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type GetQueryRequest struct {
-	ID string `json:"id"`
-}
-
-type UpdateEmailRequest struct {
+// RequestUpdateUserEmail is request of PUT /user/email
+type RequestUpdateEmail struct {
 	NewEmail string `json:"new_email"`
 }
 
-type UpdatePasswordRequest struct {
+type RequestUpdatePassword struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
 }

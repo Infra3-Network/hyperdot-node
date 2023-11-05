@@ -1,3 +1,148 @@
+definitions:
+  datamodel.UserModel:
+    properties:
+      bio:
+        type: string
+      confirmed_at:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      discord:
+        type: string
+      email:
+        type: string
+      github:
+        type: string
+      icon_url:
+        type: string
+      id:
+        type: integer
+      location:
+        type: string
+      log:
+        type: string
+      logs:
+        items:
+          $ref: '#/definitions/datamodel.UserSignLog'
+        type: array
+      provider:
+        type: string
+      sign_in_count:
+        type: integer
+      telgram:
+        type: string
+      twitter:
+        type: string
+      uid:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  datamodel.UserSignLog:
+    properties:
+      at:
+        type: string
+      ip:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  user.RequestCreateAccount:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      provider:
+        type: string
+      username:
+        type: string
+    type: object
+  user.RequestLogin:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      provider:
+        type: string
+      userId:
+        type: string
+    type: object
+  user.ResponseCreateAccount:
+    type: object
+  user.ResponseGetUser:
+    properties:
+      data:
+        $ref: '#/definitions/user.ResponseGetUserData'
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
+  user.ResponseGetUserData:
+    properties:
+      bio:
+        type: string
+      confirmed_at:
+        type: string
+      created_at:
+        type: string
+      dashboards:
+        type: integer
+      discord:
+        type: string
+      email:
+        type: string
+      encrypted_password:
+        type: string
+      github:
+        type: string
+      icon_url:
+        type: string
+      id:
+        type: string
+      location:
+        type: string
+      queries:
+        type: integer
+      stars:
+        type: integer
+      telgram:
+        type: string
+      twitter:
+        type: string
+      uid:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  user.ResponseLogin:
+    properties:
+      algorithm:
+        type: string
+      token:
+        type: string
+    type: object
+  user.ResponseUpdateUser:
+    properties:
+      data:
+        $ref: '#/definitions/datamodel.UserModel'
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
 info:
   contact: {}
 paths:
@@ -14,4 +159,116 @@ paths:
           schema:
             type: QueryRunResponseData
       summary: run query
+  /user:
+    get:
+      consumes:
+      - application/json
+      description: Get the current logined user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseGetUser'
+      security:
+      - ApiKeyAuth: []
+      summary: Get the current logined user.
+      tags:
+      - user apis
+    put:
+      consumes:
+      - application/json
+      description: Update user info.
+      parameters:
+      - description: token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: update user request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.UserModel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseUpdateUser'
+      security:
+      - ApiKeyAuth: []
+      summary: Update user info.
+      tags:
+      - user apis
+  /user/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get user by id.
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseGetUser'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user by id.
+      tags:
+      - user apis
+  /user/auth/createAccount:
+    post:
+      consumes:
+      - application/json
+      description: Create account by username and password.
+      parameters:
+      - description: create account request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.RequestCreateAccount'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseCreateAccount'
+      summary: Create account by username and password.
+      tags:
+      - user apis
+  /user/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login by username and password.
+      parameters:
+      - description: login request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.RequestLogin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseLogin'
+      summary: Login by username and password.
+      tags:
+      - user apis
 swagger: "2.0"
