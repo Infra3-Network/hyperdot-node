@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"testing"
 
@@ -69,4 +70,15 @@ func TestUserUpdate(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "bar", newUser.Data.Username)
+}
+
+func TestQueryRun(t *testing.T) {
+	router := apiserver.GetEngine()
+	w := httptest.NewRecorder()
+	path := fmt.Sprintf("/apis/v1/query/run?q=%s&&engine=%s",
+		"select * from `bigquery-public-data.crypto_polkadot.AAA_tableschema` limit 2",
+		"bigquery")
+	req, _ := MakeTokenRequest("GET", path, nil)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
 }
