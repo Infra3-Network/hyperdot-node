@@ -21,6 +21,7 @@ type RequestUpdateEmail struct {
 	NewEmail string `json:"new_email"`
 }
 
+// RequestUpdateUserPassword is request of PUT /user/password
 type RequestUpdatePassword struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`

@@ -10,17 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
-	"infra-3.xyz/hyperdot-node/internal/dataengine"
-
-	"cloud.google.com/go/bigquery"
 	"github.com/gin-gonic/gin"
-	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	"infra-3.xyz/hyperdot-node/internal/apis/base"
 	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/common"
+	"infra-3.xyz/hyperdot-node/internal/dataengine"
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 	"infra-3.xyz/hyperdot-node/internal/store"
 )
@@ -131,100 +128,16 @@ func (s *Service) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 	}
 }
 
-// @BasePath /apis/v1/
-
 // @Summary run query
-// @Schemes
 // @Description run query
-// @Accept json
-// @Produce json
-// @Success 200 {QueryRunResponseData} QueryRunResponseData
-// @Router /apis/v1/query/run [post]
-func (s *Service) RunHandle() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		// extract QueryRunRequest
-		var req base.QueryRunRequest
-		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: err.Error(),
-			})
-			return
-		}
-
-		if len(req.Query) == 0 {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: "Query is empty",
-			})
-			return
-		}
-
-		if len(req.Engine) == 0 {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: "Engine is empty",
-			})
-			return
-		}
-
-		if strings.ToLower(req.Engine) != "bigquery" {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: fmt.Sprintf("Engine %s is not supported", req.Engine),
-			})
-			return
-		}
-
-		// run query
-		iter, err := s.bigqueryClient.Query(ctx, req.Query)
-		if err != nil {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: err.Error(),
-			})
-			return
-		}
-
-		var schemas []datamodel.TableSchema
-		for _, filed := range iter.Schema {
-			mode := ""
-			if filed.Repeated {
-				mode = "REPEATED"
-			} else if filed.Required {
-				mode = "REQUIRED"
-			} else {
-				mode = "NULLABLE"
-			}
-
-			schemas = append(schemas, datamodel.TableSchema{
-				Mode: mode,
-				Name: filed.Name,
-				Type: string(filed.Type),
-			})
-		}
-
-		// extract result
-		var results []map[string]bigquery.Value
-		for {
-			var row map[string]bigquery.Value
-			err := iter.Next(&row)
-			if errors.Is(err, iterator.Done) {
-				break
-			} else if err != nil {
-				log.Fatalf("Error iterating through results: %v", err)
-			}
-			results = append(results, row)
-		}
-
-		ctx.JSON(200, base.QueryRunResponse{
-			BaseResponse: base.ResponseOk(),
-			Data:         base.QueryRunResponseData{Schemas: schemas, Rows: results},
-		})
-	}
-}
-
-func (s *Service) runHandler() gin.HandlerFunc {
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param query query string true "q"
+// @Param engine query string true "engine"
+// @Success 200 {object} ResponseRun
+// @Router /query/run [get]
+func (s *Service) RunHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		query := ctx.Query("q")
 		engineName := ctx.Query("engine")
@@ -270,11 +183,11 @@ func (s *Service) runHandler() gin.HandlerFunc {
 
 		schemas := iter.Schema()
 
-		ctx.JSON(http.StatusOK, RunResponse{
+		ctx.JSON(http.StatusOK, ResponseRun{
 			BaseResponse: base.BaseResponse{
 				Success: true,
 			},
-			Data: RunResponseData{
+			Data: ResponseRunData{
 				Rows:    rows,
 				Schemas: schemas,
 			},
@@ -317,7 +230,15 @@ func (s *Service) checkUserQueryModelRequest(ctx *gin.Context, model *datamodel.
 	return true
 }
 
-func (s *Service) getQueryHandler() gin.HandlerFunc {
+// @Summary get query
+// @Description get query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "query id"
+// @Success 200 {object} Response
+// @Router /query/:id [get]
+func (s *Service) GetQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := ctx.Param("id")
 		var query datamodel.QueryModel
@@ -342,7 +263,6 @@ func (s *Service) getQueryHandler() gin.HandlerFunc {
 			},
 			Data: query,
 		})
-
 	}
 }
 
@@ -407,7 +327,19 @@ func (s *Service) getListParams(ctx *gin.Context) (*prePareListSQLParams, error)
 	}, nil
 }
 
-func (s *Service) listQueryHandler() gin.HandlerFunc {
+// @Summary list query
+// @Description list query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page_size"
+// @Param user_id query int false "user_id"
+// @Param time_range query string false "time_range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /query [get]
+func (s *Service) ListQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -468,176 +400,22 @@ func (s *Service) listQueryHandler() gin.HandlerFunc {
 			"queries": queries,
 			"total":   total,
 		})
-
-		// currentUserId, err := base.GetCurrentUserId(ctx)
-		// if err != nil {
-		// 	base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-		// 	return
-		// }
-
-		// var (
-		// 	page     uint
-		// 	pageSize uint
-		// 	userId   uint
-		// )
-
-		// if page, err = base.GetUIntQuery(ctx, "page"); err != nil {
-		// 	if err == base.ErrQueryNotFound {
-		// 		page = 1
-		// 	} else {
-		// 		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-		// 		return
-		// 	}
-		// }
-
-		// if pageSize, err = base.GetUIntQuery(ctx, "page_size"); err != nil {
-		// 	if err == base.ErrQueryNotFound {
-		// 		pageSize = 10
-		// 	} else {
-		// 		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-		// 	}
-		// }
-
-		// if userId, err = base.GetUIntQuery(ctx, "user_id"); err != nil && err != base.ErrQueryNotFound {
-		// 	base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-		// 	return
-		// }
-
-		// var raw *gorm.DB
-		// tb1 := datamodel.QueryModel{}.TableName()
-		// tb2 := datamodel.UserModel{}.TableName()
-		// tb3 := datamodel.UserQueryFavorites{}.TableName()
-		// if userId == 0 {
-		// 	sql := `
-		// 	SELECT
-		// 		tb1.*,
-		// 		tb2.username,
-		// 		tb2.email,
-		// 		tb2.uid,
-		// 		tb2.icon_url,
-		// 		tb3.stared
-		// 	FROM
-		// 		%s AS tb1
-		// 		LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
-		// 		LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
-		// 	WHERE
-		// 		tb1.is_privacy = FALSE
-		// 	ORDER BY
-		// 		updated_at DESC
-		// 		LIMIT ? OFFSET ( ? - 1 ) * ?
-		// 	`
-		// 	sql = fmt.Sprintf(sql, tb1, tb2, tb3)
-		// 	raw = s.db.Raw(sql, currentUserId, pageSize, page, pageSize)
-		// } else {
-		// 	sql := `
-		// 	SELECT
-		// 		tb1.*,
-		// 		tb2.username,
-		// 		tb2.email,
-		// 		tb2.uid,
-		// 		tb2.icon_url,
-		// 		tb3.stared
-		// 	FROM
-		// 		%s AS tb1
-		// 		LEFT JOIN %s AS tb2 ON tb1.user_id = tb2.id
-		// 		LEFT JOIN %s AS tb3 ON tb1.id = tb3.query_id AND tb3.user_id = ?
-		// 	WHERE
-		// 		tb1.is_privacy = FALSE
-		// 		AND tb1.user_id = ?
-		// 	ORDER BY
-		// 		updated_at DESC
-		// 		LIMIT ? OFFSET ( ? - 1 ) * ?
-		// 	`
-		// 	sql = fmt.Sprintf(sql, tb1, tb2, tb3)
-		// 	raw = s.db.Raw(sql, currentUserId, userId, pageSize, page, pageSize)
-		// }
-
-		// rows, err := raw.Rows()
-		// if err != nil {
-		// 	base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-		// 	return
-		// }
-		// defer rows.Close()
-
-		// var queries []map[string]interface{}
-		// for rows.Next() {
-		// 	data := make(map[string]interface{})
-		// 	if err := s.db.ScanRows(rows, &data); err != nil {
-		// 		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-		// 		return
-		// 	}
-		// 	// convert chart string to structured chart
-		// 	rawChart, ok := data["charts"]
-		// 	if ok && rawChart != nil {
-		// 		jsonChart := make([]map[string]interface{}, 0)
-		// 		if err := json.Unmarshal([]byte(rawChart.(string)), &jsonChart); err != nil {
-		// 			log.Printf("unmarshal chart error: %v", err)
-		// 			continue
-		// 		}
-		// 		data["charts"] = jsonChart
-		// 	}
-
-		// 	var stars int64
-		// 	if err = s.db.Table(tb3).Where("query_id = ? and stared = true", data["id"]).Count(&stars).Error; err != nil {
-		// 		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-		// 		return
-		// 	}
-		// 	data["stars"] = stars
-
-		// 	queries = append(queries, data)
-		// }
-
-		// // get total
-		// if userId == 0 {
-		// 	sql := `
-		// 	SELECT COUNT
-		// 		( ID )
-		// 	FROM
-		// 		%s
-		// 	WHERE
-		// 		is_privacy = FALSE
-		// 	`
-		// 	sql = fmt.Sprintf(sql, tb1)
-		// 	raw = s.db.Raw(sql)
-		// } else {
-		// 	sql := `
-		// 	SELECT COUNT
-		// 		( ID )
-		// 	FROM
-		// 		%s
-		// 	WHERE
-		// 		is_privacy = FALSE
-		// 		AND user_id = ?
-		// 	`
-		// 	sql = fmt.Sprintf(sql, tb1)
-		// 	raw = s.db.Raw(sql, userId)
-		// }
-
-		// var total uint
-		// if rows, err = raw.Rows(); err != nil {
-		// 	base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-		// 	return
-		// }
-		// defer rows.Close()
-
-		// for rows.Next() {
-		// 	if err := s.db.ScanRows(rows, &total); err != nil {
-		// 		base.ResponseErr(ctx, http.StatusInternalServerError, err.Error())
-		// 		return
-		// 	} else {
-		// 		break
-		// 	}
-		// }
-
-		// base.ResponseWithMap(ctx, map[string]any{
-		// 	"queries": queries,
-		// 	"total":   total,
-		// })
-
 	}
 }
 
-func (s *Service) listFavoriteQueryHandler() gin.HandlerFunc {
+// @Summary list favorite query
+// @Description list favorite query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page_size"
+// @Param user_id query int false "user_id"
+// @Param time_range query string false "time_range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /query/favorite [get]
+func (s *Service) ListFavoriteQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -702,7 +480,19 @@ func (s *Service) listFavoriteQueryHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) listBrowseQueryHandler() gin.HandlerFunc {
+// @Summary list browse query
+// @Description list browse query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page_size"
+// @Param user_id query int false "user_id"
+// @Param time_range query string false "time_range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /query/browse [get]
+func (s *Service) ListBrowseQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -764,31 +554,6 @@ func (s *Service) listBrowseQueryHandler() gin.HandlerFunc {
 			"queries": queries,
 			"total":   total,
 		})
-	}
-}
-
-func (s *Service) listCurrentUserQueryChartHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		userId, err := base.GetCurrentUserId(ctx)
-		if err != nil {
-			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
-			return
-		}
-
-		s.listUserQueryChart(ctx, userId)
-	}
-}
-
-func (s *Service) listUserQueryChartHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-
-		userId, err := base.GetUintParam(ctx, "userId")
-		if err != nil {
-			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
-			return
-		}
-
-		s.listUserQueryChart(ctx, userId)
 	}
 }
 
@@ -899,7 +664,18 @@ func (s *Service) listUserQueryChart(ctx *gin.Context, userId uint) {
 	})
 }
 
-func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
+// @Summary list current logined user charts
+// @Description list current logined user charts
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page_size"
+// @Param time_range query string false "time_range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /query/charts [get]
+func (s *Service) ListCurrentUserQueryChartHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -907,21 +683,32 @@ func (s *Service) getCurrentUserQueryChartHandler() gin.HandlerFunc {
 			return
 		}
 
-		s.getUserQueryChart(ctx, userId)
-
+		s.listUserQueryChart(ctx, userId)
 	}
 }
 
-func (s *Service) getUserQueryChartHandler() gin.HandlerFunc {
+// @Summary list user charts
+// @Description list user charts
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param userId path int true "user id"
+// @Param page query int false "page"
+// @Param page_size query int false "page_size"
+// @Param time_range query string false "time_range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /query/charts/user/:userId [get]
+func (s *Service) ListUserQueryChartHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+
 		userId, err := base.GetUintParam(ctx, "userId")
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		s.getUserQueryChart(ctx, userId)
-
+		s.listUserQueryChart(ctx, userId)
 	}
 }
 
@@ -1004,7 +791,58 @@ func (s *Service) getUserQueryChart(ctx *gin.Context, userId uint) {
 	base.ResponseWithData(ctx, chart)
 }
 
-func (s *Service) removeQueryChartHandler() gin.HandlerFunc {
+// @Summary get current logined user query chart
+// @Description get current logined user query chart
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "chart id"
+// @Success 200
+// @Router /query/chart/:id [get]
+func (s *Service) GetCurrentUserQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetCurrentUserId(ctx)
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		s.getUserQueryChart(ctx, userId)
+
+	}
+}
+
+// @Summary get user query chart
+// @Description get user query chart
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "chart id"
+// @Param userId path int true "user id"
+// @Success 200
+// @Router /query/chart/:id/user/:userId [get]
+func (s *Service) GetUserQueryChartHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userId, err := base.GetUintParam(ctx, "userId")
+		if err != nil {
+			base.ResponseErr(ctx, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		s.getUserQueryChart(ctx, userId)
+
+	}
+}
+
+// @Summary delete query chart
+// @Description delete query chart
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "chart id"
+// @Success 200
+// @Router /query/chart/:id [delete]
+func (s *Service) DeleteQueryChartHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := base.GetUintParam(ctx, "id")
 		if err != nil {
@@ -1021,7 +859,15 @@ func (s *Service) removeQueryChartHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) createQueryHandler() gin.HandlerFunc {
+// @Summary create query chart
+// @Description create query chart
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param body body datamodel.QueryModel true "body"
+// @Success 200 {object} Response
+// @Router /query/chart [post]
+func (s *Service) CreateQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -1109,7 +955,15 @@ func (s *Service) createQueryHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) updateQueryHandler() gin.HandlerFunc {
+// @Summary update query
+// @Description update query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param body body datamodel.QueryModel true "body"
+// @Success 200 {object} Response
+// @Router /query [put]
+func (s *Service) UpdateQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
 		_, err := base.GetCurrentUserId(ctx)
@@ -1156,7 +1010,15 @@ func (s *Service) updateQueryHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) deleteQueryHandler() gin.HandlerFunc {
+// @Summary delete query
+// @Description delete query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "query id"
+// @Success 200
+// @Router /query/:id [delete]
+func (s *Service) DeleteQueryHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -1189,18 +1051,6 @@ func (s *Service) deleteQueryHandler() gin.HandlerFunc {
 		}
 
 		base.ResponseSuccess(ctx)
-	}
-}
-
-func (s *Service) queryFavoriteHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		s.queryFavorite(ctx, true)
-	}
-}
-
-func (s *Service) queryUnfavoriteHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		s.queryFavorite(ctx, false)
 	}
 }
 
@@ -1279,97 +1129,115 @@ func (s *Service) queryFavorite(ctx *gin.Context, star bool) {
 	base.ResponseWithData(ctx, find)
 }
 
+// @Summary user favorite query
+// @Description user favorite query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param body body datamodel.UserQueryFavorites true "body"
+// @Success 200
+// @Router /query/favorite [put]
+func (s *Service) QueryFavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		s.queryFavorite(ctx, true)
+	}
+}
+
+// @Summary user unfavorite query
+// @Description user unfavorite query
+// @Tags query apis
+// @Accept application/json
+// @Produce application/json
+// @Param body body datamodel.UserQueryFavorites true "body"
+// @Success 200
+// @Router /query/unfavorite [put]
+func (s *Service) QueryUnfavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		s.queryFavorite(ctx, false)
+	}
+}
+
 func (s *Service) Name() string {
 	return Name
 }
 
 func (s *Service) RouteTables() []base.RouteTable {
 	return []base.RouteTable{
-		// {
-		// 	Method:  "GET",
-		// 	Path:    s.group + "/engines",
-		// 	Handler: s.ListEnginesHandle(),
-		// },
-		// {
-		// 	Method:  "GET",
-		// 	Path:    s.group + "/engines/:engineId/datasets/:datasetId",
-		// 	Handler: s.GetQueryEngineDatasetHandle(),
-		// },
 		{
 			Method:  "GET",
 			Path:    s.group + "/run",
-			Handler: s.runHandler(),
+			Handler: s.RunHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group + "/:id",
-			Handler: s.getQueryHandler(),
+			Handler: s.GetQueryHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group,
-			Handler: s.listQueryHandler(),
+			Handler: s.ListQueryHandler(),
 		},
 		{
 			Method:  "POST",
 			Path:    s.group,
-			Handler: s.createQueryHandler(),
+			Handler: s.CreateQueryHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    s.group,
-			Handler: s.updateQueryHandler(),
+			Handler: s.UpdateQueryHandler(),
 		},
 		{
 			Method:  "DELETE",
 			Path:    s.group + "/:id",
-			Handler: s.deleteQueryHandler(),
+			Handler: s.DeleteQueryHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group + "/favorite",
-			Handler: s.listFavoriteQueryHandler(),
+			Handler: s.ListFavoriteQueryHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group + "/browse",
-			Handler: s.listBrowseQueryHandler(),
+			Handler: s.ListBrowseQueryHandler(),
 		},
 
 		{
 			Method:  "GET",
 			Path:    s.group + "/charts",
-			Handler: s.listCurrentUserQueryChartHandler(),
+			Handler: s.ListCurrentUserQueryChartHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group + "/charts/user/:userId",
-			Handler: s.listUserQueryChartHandler(),
+			Handler: s.ListUserQueryChartHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group + "/chart/:id",
-			Handler: s.getCurrentUserQueryChartHandler(),
+			Handler: s.GetCurrentUserQueryChartHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    s.group + "/chart/:id/user/:userId",
-			Handler: s.getUserQueryChartHandler(),
+			Handler: s.GetUserQueryChartHandler(),
 		},
 		{
 			Method:  "DELETE",
 			Path:    s.group + "/chart/:id/",
-			Handler: s.removeQueryChartHandler(),
+			Handler: s.DeleteQueryChartHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    s.group + "/favorite",
-			Handler: s.queryFavoriteHandler(),
+			Handler: s.QueryFavoriteHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    s.group + "/unfavorite",
-			Handler: s.queryUnfavoriteHandler(),
+			Handler: s.QueryUnfavoriteHandler(),
 		},
 	}
 }

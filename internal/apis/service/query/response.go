@@ -6,19 +6,22 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
-type RunResponseData struct {
+// RequestCreateQuery is response of POST /query/run
+type ResponseRunData struct {
 	Rows    []map[string]interface{}  `json:"rows"`
 	Schemas []*dataengine.FieldSchema `json:"schemas"`
 }
 
-type RunResponse struct {
-	Data RunResponseData `json:"data"`
+// ResponseCreateQuery is response of POST /query/run
+type ResponseRun struct {
+	Data ResponseRunData `json:"data"`
 	base.BaseResponse
 }
 
+// ResponseCreateQuery is response of GET /query
 type Response struct {
-	Data datamodel.QueryModel `json:"data"`
 	base.BaseResponse
+	Data datamodel.QueryModel `json:"data"`
 }
 
 type ListResponse struct {

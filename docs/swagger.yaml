@@ -1,4 +1,77 @@
 definitions:
+  dataengine.FieldSchema:
+    properties:
+      description:
+        description: A description of the field. The maximum length is 16,384 characters.
+        type: string
+      name:
+        description: |-
+          The field name.
+          Must contain only letters (a-z, A-Z), numbers (0-9), or underscores (_),
+          and must start with a letter or underscore.
+          The maximum length is 128 characters.
+        type: string
+      repeated:
+        description: Whether the field may contain multiple values.
+        type: boolean
+      required:
+        description: Whether the field is required.  Ignored if Repeated is true.
+        type: boolean
+      type:
+        description: |-
+          The field data type.  If Type is Record, then this field contains a nested schema,
+          which is described by Schema.
+        type: string
+    type: object
+  datamodel.ChartModel:
+    properties:
+      closeable:
+        type: boolean
+      config:
+        $ref: '#/definitions/datamodel.JSON'
+      id:
+        type: integer
+      name:
+        type: string
+      query_id:
+        type: integer
+      type:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  datamodel.JSON:
+    additionalProperties: true
+    type: object
+  datamodel.QueryModel:
+    properties:
+      charts:
+        items:
+          $ref: '#/definitions/datamodel.ChartModel'
+        type: array
+      created_At:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      is_privacy:
+        type: boolean
+      name:
+        type: string
+      query:
+        type: string
+      query_engine:
+        type: string
+      stars:
+        type: integer
+      unsaved:
+        type: boolean
+      updated_At:
+        type: string
+      user_id:
+        type: integer
+    type: object
   datamodel.UserModel:
     properties:
       bio:
@@ -42,6 +115,23 @@ definitions:
       username:
         type: string
     type: object
+  datamodel.UserQueryFavorites:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      query_id:
+        type: integer
+      query_user_id:
+        type: integer
+      stared:
+        type: boolean
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   datamodel.UserSignLog:
     properties:
       at:
@@ -50,6 +140,40 @@ definitions:
         type: string
       user_agent:
         type: string
+    type: object
+  query.Response:
+    properties:
+      data:
+        $ref: '#/definitions/datamodel.QueryModel'
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
+  query.ResponseRun:
+    properties:
+      data:
+        $ref: '#/definitions/query.ResponseRunData'
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
+  query.ResponseRunData:
+    properties:
+      rows:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      schemas:
+        items:
+          $ref: '#/definitions/dataengine.FieldSchema'
+        type: array
     type: object
   user.RequestCreateAccount:
     properties:
@@ -71,6 +195,18 @@ definitions:
       provider:
         type: string
       userId:
+        type: string
+    type: object
+  user.RequestUpdateEmail:
+    properties:
+      new_email:
+        type: string
+    type: object
+  user.RequestUpdatePassword:
+    properties:
+      current_password:
+        type: string
+      new_password:
         type: string
     type: object
   user.ResponseCreateAccount:
@@ -143,22 +279,402 @@ definitions:
       success:
         type: boolean
     type: object
+  user.ResponseUploadAvatar:
+    properties:
+      data:
+        $ref: '#/definitions/user.ResponseUploadAvatarData'
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
+  user.ResponseUploadAvatarData:
+    properties:
+      filesize:
+        type: integer
+      key:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
-  /apis/v1/query/run:
-    post:
+  /query:
+    get:
       consumes:
       - application/json
-      description: run query
+      description: list query
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page_size
+        in: query
+        name: page_size
+        type: integer
+      - description: user_id
+        in: query
+        name: user_id
+        type: integer
+      - description: time_range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: list query
+      tags:
+      - query apis
+    put:
+      consumes:
+      - application/json
+      description: update query
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.QueryModel'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            type: QueryRunResponseData
+            $ref: '#/definitions/query.Response'
+      summary: update query
+      tags:
+      - query apis
+  /query/:id:
+    delete:
+      consumes:
+      - application/json
+      description: delete query
+      parameters:
+      - description: query id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: delete query
+      tags:
+      - query apis
+    get:
+      consumes:
+      - application/json
+      description: get query
+      parameters:
+      - description: query id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/query.Response'
+      summary: get query
+      tags:
+      - query apis
+  /query/browse:
+    get:
+      consumes:
+      - application/json
+      description: list browse query
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page_size
+        in: query
+        name: page_size
+        type: integer
+      - description: user_id
+        in: query
+        name: user_id
+        type: integer
+      - description: time_range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: list browse query
+      tags:
+      - query apis
+  /query/chart:
+    post:
+      consumes:
+      - application/json
+      description: create query chart
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.QueryModel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/query.Response'
+      summary: create query chart
+      tags:
+      - query apis
+  /query/chart/:id:
+    delete:
+      consumes:
+      - application/json
+      description: delete query chart
+      parameters:
+      - description: chart id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: delete query chart
+      tags:
+      - query apis
+    get:
+      consumes:
+      - application/json
+      description: get current logined user query chart
+      parameters:
+      - description: chart id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: get current logined user query chart
+      tags:
+      - query apis
+  /query/chart/:id/user/:userId:
+    get:
+      consumes:
+      - application/json
+      description: get user query chart
+      parameters:
+      - description: chart id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: get user query chart
+      tags:
+      - query apis
+  /query/charts:
+    get:
+      consumes:
+      - application/json
+      description: list current logined user charts
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page_size
+        in: query
+        name: page_size
+        type: integer
+      - description: time_range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: list current logined user charts
+      tags:
+      - query apis
+  /query/charts/user/:userId:
+    get:
+      consumes:
+      - application/json
+      description: list user charts
+      parameters:
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page_size
+        in: query
+        name: page_size
+        type: integer
+      - description: time_range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: list user charts
+      tags:
+      - query apis
+  /query/favorite:
+    get:
+      consumes:
+      - application/json
+      description: list favorite query
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page_size
+        in: query
+        name: page_size
+        type: integer
+      - description: user_id
+        in: query
+        name: user_id
+        type: integer
+      - description: time_range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: list favorite query
+      tags:
+      - query apis
+    put:
+      consumes:
+      - application/json
+      description: user favorite query
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.UserQueryFavorites'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: user favorite query
+      tags:
+      - query apis
+  /query/run:
+    get:
+      consumes:
+      - application/json
+      description: run query
+      parameters:
+      - description: q
+        in: query
+        name: query
+        required: true
+        type: string
+      - description: engine
+        in: query
+        name: engine
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/query.ResponseRun'
       summary: run query
+      tags:
+      - query apis
+  /query/unfavorite:
+    put:
+      consumes:
+      - application/json
+      description: user unfavorite query
+      parameters:
+      - description: body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.UserQueryFavorites'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: user unfavorite query
+      tags:
+      - query apis
   /user:
     get:
       consumes:
@@ -269,6 +785,111 @@ paths:
           schema:
             $ref: '#/definitions/user.ResponseLogin'
       summary: Login by username and password.
+      tags:
+      - user apis
+  /user/avatar:
+    get:
+      consumes:
+      - application/json
+      description: Get user avatar.
+      parameters:
+      - description: token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      responses: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get user avatar.
+      tags:
+      - user apis
+  /user/avatar/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload user avatar.
+      parameters:
+      - description: token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: avatar file
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseUploadAvatar'
+      security:
+      - ApiKeyAuth: []
+      summary: Upload user avatar.
+      tags:
+      - user apis
+  /user/email:
+    put:
+      consumes:
+      - application/json
+      description: Update user email.
+      parameters:
+      - description: token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: update email request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.RequestUpdateEmail'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseUpdateUser'
+      security:
+      - ApiKeyAuth: []
+      summary: Update user email.
+      tags:
+      - user apis
+  /user/password:
+    put:
+      consumes:
+      - application/json
+      description: Update user password.
+      parameters:
+      - description: token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: update password request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.RequestUpdatePassword'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.ResponseUpdateUser'
+      security:
+      - ApiKeyAuth: []
+      summary: Update user password.
       tags:
       - user apis
 swagger: "2.0"

@@ -45,6 +45,7 @@ type ResponseUpdateUser struct {
 type ResponseCreateAccount struct {
 }
 
+// ResponseLogin is response of POST /user/auth/login
 type ResponseLogin struct {
 	Algorithm string `json:"algorithm"`
 	Token     string `json:"token"`
@@ -60,9 +61,4 @@ type ResponseUploadAvatarData struct {
 type ResponseUploadAvatar struct {
 	base.BaseResponse
 	Data ResponseUploadAvatarData `json:"data"`
-}
-
-type QueryResponse struct {
-	Data datamodel.QueryModel `json:"data"`
-	base.BaseResponse
 }
