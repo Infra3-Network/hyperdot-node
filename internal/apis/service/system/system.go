@@ -30,7 +30,14 @@ func New(cfg *common.Config) *Service {
 	}
 }
 
-func (s *Service) listEnginesHandler() gin.HandlerFunc {
+// @Summary List query engines
+// @Description List query engines
+// @Tags System apis
+// @Accept application/json
+// @Produce application/json
+// @Success 200
+// @Router /system/engines [get]
+func (s *Service) ListEnginesHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		cmd := s.redisClient.HGetAll(context.Background(), datamodel.HyperdotQueryEnginesKey)
 		if cmd.Err() != nil {
@@ -113,7 +120,15 @@ func (s *Service) getBigqueryDataset() (map[string]interface{}, error) {
 
 }
 
-func (s *Service) getQueryEngineDatasetHandle() gin.HandlerFunc {
+// @Summary Get query engine dataset
+// @Description Get query engine dataset
+// @Tags System apis
+// @Accept application/json
+// @Produce application/json
+// @Param engineId path string true "engineId"
+// @Success 200
+// @Router /system/engines/{engineId} [get]
+func (s *Service) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		engineId := ctx.Param("engineId")
 		if len(engineId) == 0 {
@@ -151,12 +166,12 @@ func (s *Service) RouteTables() []base.RouteTable {
 		{
 			Method:  "GET",
 			Path:    group + "/engines",
-			Handler: s.listEnginesHandler(),
+			Handler: s.ListEnginesHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    group + "/engines/:engineId",
-			Handler: s.getQueryEngineDatasetHandle(),
+			Handler: s.GetQueryEngineDatasetHandle(),
 		},
 	}
 }

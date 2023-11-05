@@ -34,63 +34,71 @@ func (s *Service) RouteTables() []base.RouteTable {
 		{
 			Method:  "GET",
 			Path:    group + "/:id",
-			Handler: s.getDashboardHandler(),
+			Handler: s.GetDashboardHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    group,
-			Handler: s.listDashboardHandler(),
+			Handler: s.ListDashboardHandler(),
 		},
 		{
 			Method:  "POST",
 			Path:    group,
-			Handler: s.createDashboardHandler(),
+			Handler: s.CreateDashboardHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    group,
-			Handler: s.updateDashboardHandler(),
+			Handler: s.UpdateDashboardHandler(),
 		},
 		{
 			Method:  "DELETE",
 			Path:    group + "/:id",
-			Handler: s.deleteDashboardHandler(),
+			Handler: s.DeleteDashboardHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    group + "/favorite",
-			Handler: s.listFavoriteDashboardHandler(),
+			Handler: s.ListFavoriteDashboardHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    group + "/browse",
-			Handler: s.listBrowseUserDashboardHandler(),
+			Handler: s.ListBrowseUserDashboardHandler(),
 		},
 		{
 			Method:  "GET",
 			Path:    group + "/tag/populars",
-			Handler: s.listPopularDashboardTags(),
+			Handler: s.ListPopularDashboardTags(),
 		},
 
 		{
 			Method:  "PUT",
 			Path:    group + "/favorite",
-			Handler: s.dashboardFavoriteHandler(),
+			Handler: s.DashboardFavoriteHandler(),
 		},
 		{
 			Method:  "PUT",
 			Path:    group + "/unfavorite",
-			Handler: s.dashboardUnfavoriteHandler(),
+			Handler: s.DashboardUnfavoriteHandler(),
 		},
 		{
 			Method:  "DELETE",
 			Path:    group + "/panel/:panelId",
-			Handler: s.removeDashboardPanelHandler(),
+			Handler: s.RemoveDashboardPanelHandler(),
 		},
 	}
 }
 
-func (s *Service) getDashboardHandler() gin.HandlerFunc {
+// @Summary Get dashboard
+// @Description Get dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "dashboard id"
+// @Success 200
+// @Router /apis/v1/dashboard/{id} [get]
+func (s *Service) GetDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
 		id, err := base.GetUintParam(ctx, "id")
@@ -181,7 +189,19 @@ func (s *Service) getListParams(ctx *gin.Context) (*prePareListSQLParams, error)
 	}, nil
 }
 
-func (s *Service) listDashboardHandler() gin.HandlerFunc {
+// @Summary List dashboard
+// @Description List dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page size"
+// @Param user_id query int false "user id"
+// @Param time_range query string false "time range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /apis/v1/dashboard [get]
+func (s *Service) ListDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -246,7 +266,19 @@ func (s *Service) listDashboardHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) listFavoriteDashboardHandler() gin.HandlerFunc {
+// @Summary List favorite dashboard
+// @Description List favorite dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page size"
+// @Param user_id query int false "user id"
+// @Param time_range query string false "time range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /apis/v1/dashboard/favorite [get]
+func (s *Service) ListFavoriteDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -311,7 +343,19 @@ func (s *Service) listFavoriteDashboardHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) listPopularDashboardTags() gin.HandlerFunc {
+// @Summary List popular dashboard
+// @Description List dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page size"
+// @Param user_id query int false "user id"
+// @Param time_range query string false "time range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /apis/v1/dashboard/popular [get]
+func (s *Service) ListPopularDashboardTags() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		limit, err := base.GetUIntQuery(ctx, "limit")
 		if err != nil {
@@ -389,7 +433,19 @@ func (s *Service) listPopularDashboardTags() gin.HandlerFunc {
 
 }
 
-func (s *Service) listBrowseUserDashboardHandler() gin.HandlerFunc {
+// @Summary List browse user dashboard
+// @Description List browse user dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param page query int false "page"
+// @Param page_size query int false "page size"
+// @Param user_id query int false "user id"
+// @Param time_range query string false "time range"
+// @Param order query string false "order"
+// @Success 200
+// @Router /apis/v1/dashboard/browse [get]
+func (s *Service) ListBrowseUserDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUserId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -454,7 +510,15 @@ func (s *Service) listBrowseUserDashboardHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) createDashboardHandler() gin.HandlerFunc {
+// @Summary Create dashboard
+// @Description Create dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param dashboard body datamodel.DashboardModel true "dashboard"
+// @Success 200
+// @Router /apis/v1/dashboard [post]
+func (s *Service) CreateDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -479,7 +543,15 @@ func (s *Service) createDashboardHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) updateDashboardHandler() gin.HandlerFunc {
+// @Summary Update dashboard
+// @Description Update dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param dashboard body datamodel.DashboardModel true "dashboard"
+// @Success 200
+// @Router /apis/v1/dashboard [put]
+func (s *Service) UpdateDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -517,7 +589,15 @@ func (s *Service) updateDashboardHandler() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) deleteDashboardHandler() gin.HandlerFunc {
+// @Summary Delete dashboard
+// @Description Delete dashboard
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "dashboard id"
+// @Success 200
+// @Router /apis/v1/dashboard/{id} [delete]
+func (s *Service) DeleteDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userId, err := base.GetCurrentUserId(ctx)
 		if err != nil {
@@ -550,18 +630,6 @@ func (s *Service) deleteDashboardHandler() gin.HandlerFunc {
 		}
 
 		base.ResponseSuccess(ctx)
-	}
-}
-
-func (s *Service) dashboardFavoriteHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		s.dashboardFavorite(ctx, true)
-	}
-}
-
-func (s *Service) dashboardUnfavoriteHandler() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		s.dashboardFavorite(ctx, false)
 	}
 }
 
@@ -640,7 +708,43 @@ func (s *Service) dashboardFavorite(ctx *gin.Context, star bool) {
 	base.ResponseWithData(ctx, find)
 }
 
-func (s *Service) removeDashboardPanelHandler() gin.HandlerFunc {
+// @Summary Dashboard favorite
+// @Description Dashboard favorite
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param dashboard body datamodel.UserDashboardFavorites true "dashboard"
+// @Success 200
+// @Router /apis/v1/dashboard/favorite [put]
+func (s *Service) DashboardFavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		s.dashboardFavorite(ctx, true)
+	}
+}
+
+// @Summary Dashboard unfavorite
+// @Description Dashboard unfavorite
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param dashboard body datamodel.UserDashboardFavorites true "dashboard"
+// @Success 200
+// @Router /apis/v1/dashboard/unfavorite [put]
+func (s *Service) DashboardUnfavoriteHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		s.dashboardFavorite(ctx, false)
+	}
+}
+
+// @Summary Remove dashboard panel
+// @Description Remove dashboard panel
+// @Tags Dashboard apis
+// @Accept application/json
+// @Produce application/json
+// @Param panelId path int true "panel id"
+// @Success 200
+// @Router /apis/v1/dashboard/panel/{panelId} [delete]
+func (s *Service) RemoveDashboardPanelHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		panelId, err := base.GetUintParam(ctx, "panelId")
 		if err != nil {

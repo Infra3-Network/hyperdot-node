@@ -4,6 +4,446 @@
         "contact": {}
     },
     "paths": {
+        "/apis/v1/dashboard": {
+            "get": {
+                "description": "List dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "List dashboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "time range",
+                        "name": "time_range",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order",
+                        "name": "order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "put": {
+                "description": "Update dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Update dashboard",
+                "parameters": [
+                    {
+                        "description": "dashboard",
+                        "name": "dashboard",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/datamodel.DashboardModel"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "post": {
+                "description": "Create dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Create dashboard",
+                "parameters": [
+                    {
+                        "description": "dashboard",
+                        "name": "dashboard",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/datamodel.DashboardModel"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/apis/v1/dashboard/browse": {
+            "get": {
+                "description": "List browse user dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "List browse user dashboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "time range",
+                        "name": "time_range",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order",
+                        "name": "order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/apis/v1/dashboard/favorite": {
+            "get": {
+                "description": "List favorite dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "List favorite dashboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "time range",
+                        "name": "time_range",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order",
+                        "name": "order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "put": {
+                "description": "Dashboard favorite",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Dashboard favorite",
+                "parameters": [
+                    {
+                        "description": "dashboard",
+                        "name": "dashboard",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/datamodel.UserDashboardFavorites"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/apis/v1/dashboard/panel/{panelId}": {
+            "delete": {
+                "description": "Remove dashboard panel",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Remove dashboard panel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "panel id",
+                        "name": "panelId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/apis/v1/dashboard/popular": {
+            "get": {
+                "description": "List dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "List popular dashboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "time range",
+                        "name": "time_range",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order",
+                        "name": "order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/apis/v1/dashboard/unfavorite": {
+            "put": {
+                "description": "Dashboard unfavorite",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Dashboard unfavorite",
+                "parameters": [
+                    {
+                        "description": "dashboard",
+                        "name": "dashboard",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/datamodel.UserDashboardFavorites"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/apis/v1/dashboard/{id}": {
+            "get": {
+                "description": "Get dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Get dashboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "dashboard id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard apis"
+                ],
+                "summary": "Delete dashboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "dashboard id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/file": {
+            "get": {
+                "description": "Get file",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File apis"
+                ],
+                "summary": "Get file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "file name",
+                        "name": "file",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/query": {
             "get": {
                 "description": "list query",
@@ -575,6 +1015,55 @@
                 }
             }
         },
+        "/system/engines": {
+            "get": {
+                "description": "List query engines",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System apis"
+                ],
+                "summary": "List query engines",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/system/engines/{engineId}": {
+            "get": {
+                "description": "Get query engine dataset",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System apis"
+                ],
+                "summary": "Get query engine dataset",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "engineId",
+                        "name": "engineId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/user": {
             "get": {
                 "security": [
@@ -971,6 +1460,95 @@
                 }
             }
         },
+        "datamodel.DashboardModel": {
+            "type": "object",
+            "properties": {
+                "created_At": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_privacy": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "panels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/datamodel.DashboardPanelModel"
+                    }
+                },
+                "tags": {
+                    "type": "string"
+                },
+                "updated_At": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "datamodel.DashboardPanelModel": {
+            "type": "object",
+            "properties": {
+                "chart_id": {
+                    "type": "integer"
+                },
+                "created_At": {
+                    "type": "string"
+                },
+                "dashboard_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "query_id": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "0: Text, 1: Visualization",
+                    "type": "integer"
+                },
+                "updated_At": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "width": {
+                    "type": "string"
+                },
+                "x_pos": {
+                    "type": "number"
+                },
+                "y_pos": {
+                    "type": "number"
+                }
+            }
+        },
         "datamodel.JSON": {
             "type": "object",
             "additionalProperties": true
@@ -1012,6 +1590,29 @@
                     "type": "boolean"
                 },
                 "updated_At": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "datamodel.UserDashboardFavorites": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "dashboard_id": {
+                    "type": "integer"
+                },
+                "dashboard_user_id": {
+                    "type": "integer"
+                },
+                "stared": {
+                    "type": "boolean"
+                },
+                "updated_at": {
                     "type": "string"
                 },
                 "user_id": {

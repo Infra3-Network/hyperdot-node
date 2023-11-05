@@ -40,6 +40,65 @@ definitions:
       user_id:
         type: integer
     type: object
+  datamodel.DashboardModel:
+    properties:
+      created_At:
+        type: string
+      deleted_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      is_privacy:
+        type: boolean
+      name:
+        type: string
+      panels:
+        items:
+          $ref: '#/definitions/datamodel.DashboardPanelModel'
+        type: array
+      tags:
+        type: string
+      updated_At:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  datamodel.DashboardPanelModel:
+    properties:
+      chart_id:
+        type: integer
+      created_At:
+        type: string
+      dashboard_id:
+        type: integer
+      description:
+        type: string
+      height:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      query_id:
+        type: integer
+      text:
+        type: string
+      type:
+        description: '0: Text, 1: Visualization'
+        type: integer
+      updated_At:
+        type: string
+      user_id:
+        type: integer
+      width:
+        type: string
+      x_pos:
+        type: number
+      y_pos:
+        type: number
+    type: object
   datamodel.JSON:
     additionalProperties: true
     type: object
@@ -68,6 +127,21 @@ definitions:
       unsaved:
         type: boolean
       updated_At:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  datamodel.UserDashboardFavorites:
+    properties:
+      created_at:
+        type: string
+      dashboard_id:
+        type: integer
+      dashboard_user_id:
+        type: integer
+      stared:
+        type: boolean
+      updated_at:
         type: string
       user_id:
         type: integer
@@ -300,6 +374,294 @@ definitions:
 info:
   contact: {}
 paths:
+  /apis/v1/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: List dashboard
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        type: integer
+      - description: user id
+        in: query
+        name: user_id
+        type: integer
+      - description: time range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List dashboard
+      tags:
+      - Dashboard apis
+    post:
+      consumes:
+      - application/json
+      description: Create dashboard
+      parameters:
+      - description: dashboard
+        in: body
+        name: dashboard
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.DashboardModel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Create dashboard
+      tags:
+      - Dashboard apis
+    put:
+      consumes:
+      - application/json
+      description: Update dashboard
+      parameters:
+      - description: dashboard
+        in: body
+        name: dashboard
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.DashboardModel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Update dashboard
+      tags:
+      - Dashboard apis
+  /apis/v1/dashboard/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete dashboard
+      parameters:
+      - description: dashboard id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Delete dashboard
+      tags:
+      - Dashboard apis
+    get:
+      consumes:
+      - application/json
+      description: Get dashboard
+      parameters:
+      - description: dashboard id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Get dashboard
+      tags:
+      - Dashboard apis
+  /apis/v1/dashboard/browse:
+    get:
+      consumes:
+      - application/json
+      description: List browse user dashboard
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        type: integer
+      - description: user id
+        in: query
+        name: user_id
+        type: integer
+      - description: time range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List browse user dashboard
+      tags:
+      - Dashboard apis
+  /apis/v1/dashboard/favorite:
+    get:
+      consumes:
+      - application/json
+      description: List favorite dashboard
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        type: integer
+      - description: user id
+        in: query
+        name: user_id
+        type: integer
+      - description: time range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List favorite dashboard
+      tags:
+      - Dashboard apis
+    put:
+      consumes:
+      - application/json
+      description: Dashboard favorite
+      parameters:
+      - description: dashboard
+        in: body
+        name: dashboard
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.UserDashboardFavorites'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Dashboard favorite
+      tags:
+      - Dashboard apis
+  /apis/v1/dashboard/panel/{panelId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove dashboard panel
+      parameters:
+      - description: panel id
+        in: path
+        name: panelId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Remove dashboard panel
+      tags:
+      - Dashboard apis
+  /apis/v1/dashboard/popular:
+    get:
+      consumes:
+      - application/json
+      description: List dashboard
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        type: integer
+      - description: user id
+        in: query
+        name: user_id
+        type: integer
+      - description: time range
+        in: query
+        name: time_range
+        type: string
+      - description: order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List popular dashboard
+      tags:
+      - Dashboard apis
+  /apis/v1/dashboard/unfavorite:
+    put:
+      consumes:
+      - application/json
+      description: Dashboard unfavorite
+      parameters:
+      - description: dashboard
+        in: body
+        name: dashboard
+        required: true
+        schema:
+          $ref: '#/definitions/datamodel.UserDashboardFavorites'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Dashboard unfavorite
+      tags:
+      - Dashboard apis
+  /file:
+    get:
+      consumes:
+      - application/json
+      description: Get file
+      parameters:
+      - description: file name
+        in: query
+        name: file
+        required: true
+        type: string
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Get file
+      tags:
+      - File apis
   /query:
     get:
       consumes:
@@ -675,6 +1037,38 @@ paths:
       summary: user unfavorite query
       tags:
       - query apis
+  /system/engines:
+    get:
+      consumes:
+      - application/json
+      description: List query engines
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List query engines
+      tags:
+      - System apis
+  /system/engines/{engineId}:
+    get:
+      consumes:
+      - application/json
+      description: Get query engine dataset
+      parameters:
+      - description: engineId
+        in: path
+        name: engineId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Get query engine dataset
+      tags:
+      - System apis
   /user:
     get:
       consumes:

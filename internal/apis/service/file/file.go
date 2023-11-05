@@ -25,7 +25,14 @@ func New(s3Client *clients.SimpleS3Cliet) *Service {
 	return svc
 }
 
-func (s *Service) getFileHandler() gin.HandlerFunc {
+// @Summary Get file
+// @Description Get file
+// @Tags File apis
+// @Accept application/json
+// @Param file query string true "file name"
+// @Success 200 {string} string "ok"
+// @Router /file [get]
+func (s *Service) GetFileHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		file := ctx.Query("file")
 		if len(file) == 0 {
@@ -83,7 +90,7 @@ func (s *Service) RouteTables() []base.RouteTable {
 		{
 			Method:     "GET",
 			Path:       group,
-			Handler:    s.getFileHandler(),
+			Handler:    s.GetFileHandler(),
 			AllowGuest: true,
 			Regexp:     "",
 		},
