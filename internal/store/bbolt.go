@@ -70,6 +70,10 @@ func (b *BoltStore) SetDatasets(queryEngine string, data *datamodel.QueryEngineD
 	}
 
 	metaBucket, err := tx.CreateBucketIfNotExists([]byte("hyperdot_chain_metadata"))
+	if err != nil {
+		return err
+	}
+
 	if data.Raw != nil {
 		key := fmt.Sprintf("%s_%s", queryEngine, "raw")
 		jsonData, err := json.Marshal(data.Raw)

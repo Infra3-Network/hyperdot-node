@@ -723,9 +723,10 @@ func (s *Service) getUserQueryChart(ctx *gin.Context, userId uint) {
 	if _, err := base.GetUIntQuery(ctx, "query_id"); err != nil {
 		if err == base.ErrQueryNotFound {
 			needJoinQuery = false
+		} else {
+			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
+			return
 		}
-		base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
-		return
 	}
 
 	tb1 := datamodel.ChartModel{}.TableName()

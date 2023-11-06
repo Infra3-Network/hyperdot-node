@@ -22,13 +22,13 @@ build-arm:
 		.
 
 .PHONY: up-test
-up-test:
+up-test: 
 	docker-compose -f tests/docker-compose.yaml up -d
 
 
 .PHONY: tests
 tests:
-	$(GO) test -v ./tests/ --count=1
+	go test -v ./tests/ --count=1
 
 .PHONY: lint
 lint: 

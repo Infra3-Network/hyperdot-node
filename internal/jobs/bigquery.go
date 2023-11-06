@@ -167,10 +167,10 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 		return nil, err
 	}
 
-	var relays []string
-	for relayChainName, _ := range relayChainMap {
-		relays = append(relays, relayChainName)
-	}
+	// var relays []string
+	// for relayChainName, _ := range relayChainMap {
+	// 	relays = append(relays, relayChainName)
+	// }
 
 	return &datamodel.QueryEngineDatasetInfo{
 		Id:          "raw",

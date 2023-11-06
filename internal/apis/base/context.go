@@ -8,8 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ErrQueryNotFound is returned when the query is not found.
 var ErrQueryNotFound = errors.New("query not found")
 
+// GetCurrentUser get current login user id
 func GetCurrentUserId(ctx *gin.Context) (uint, error) {
 	v, ok := ctx.Get("user_id")
 	if !ok {
@@ -23,6 +25,7 @@ func GetCurrentUserId(ctx *gin.Context) (uint, error) {
 	return currentLoginUserId, nil
 }
 
+// GetUintParam get uint param from gin context
 func GetUintParam(ctx *gin.Context, key string) (uint, error) {
 	v := ctx.Param(key)
 	if len(v) == 0 {
@@ -38,6 +41,7 @@ func GetUintParam(ctx *gin.Context, key string) (uint, error) {
 
 }
 
+// GetIntQuery get int query from gin context
 func GetIntQuery(ctx *gin.Context, key string) (int, error) {
 	v := ctx.Query(key)
 	if len(v) == 0 {
@@ -53,6 +57,8 @@ func GetIntQuery(ctx *gin.Context, key string) (int, error) {
 
 }
 
+// GetUIntQuery get uint query from gin context.
+// If the query is not found, return special error and the caller should handle it.
 func GetUIntQuery(ctx *gin.Context, key string) (uint, error) {
 	v := ctx.Query(key)
 	if len(v) == 0 {
@@ -68,6 +74,8 @@ func GetUIntQuery(ctx *gin.Context, key string) (uint, error) {
 
 }
 
+// GetUIntQueryRequired get uint query from gin context.
+// If the query is not found, return error.
 func GetUIntQueryRequired(ctx *gin.Context, key string) (uint, error) {
 	v := ctx.Query(key)
 	if len(v) == 0 {
@@ -83,6 +91,8 @@ func GetUIntQueryRequired(ctx *gin.Context, key string) (uint, error) {
 
 }
 
+// GetStringQuery get string query from gin context.
+// If the query is not found, return special error and the caller should handle it.
 func GetStringQuery(ctx *gin.Context, key string) (string, error) {
 	v := ctx.Query(key)
 	if len(v) == 0 {
