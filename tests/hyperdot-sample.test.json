@@ -1,13 +1,13 @@
 {
     "polkaholic": {
-        "apiKey": "aaed8e0afefcf294e146167fbca9814a",
+        "apiKey": "<YOU_API_KEY>",
         "baseUrl": "https://api.polkaholic.io"
     },
     "apiserver": {
         "addr": ":3032"
     },
     "bigquery": {
-        "projectId": "hyperdot"
+        "projectId": "<YOU_PROJECT_ID>"
     },
     "localStore": {
         "bolt": {

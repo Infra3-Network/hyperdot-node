@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "gorm.io/driver/postgres"
@@ -163,6 +164,7 @@ func (s *Service) UpdateUserHandler() gin.HandlerFunc {
 				return
 			}
 			user.Username = request.Username
+			// TODO: check duplicate username
 		}
 
 		if len(request.Bio) > 0 {
@@ -538,6 +540,8 @@ func (s *Service) CreateAccountHandler() gin.HandlerFunc {
 					Username:          request.Username,
 					EncryptedPassword: encryptedPassword,
 				},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
 			}
 
 			// write user to db

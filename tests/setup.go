@@ -197,7 +197,6 @@ func createTestUser(db *gorm.DB) error {
 		return err
 	}
 	user := &datamodel.UserModel{
-		ID: 1,
 		UserBasic: datamodel.UserBasic{
 			Provider:          "password",
 			Username:          "test",

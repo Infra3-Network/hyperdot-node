@@ -181,6 +181,31 @@ make up-test
 
 ### 运行测试
 
+在运行测试前，你同样需要配置 google 应用凭据和 polkaholic 的 api key，如果您已经完成了配置可以参考下面的命令运行测试，否则您可以参考[安装前准备](#安装前准备) 来查看如何配置。
+
+创建好凭据之后，你需要修改配置文件
+
+```shell
+cp tests/hyperdot-sample.test.json  tests/hyperdot.test.json
+```
+
+修改 `tests/hyperdot.test.json` 配置中的 `polkaholic` 和 `bigquery` 配置项中的 `apiKey` 和 `projectId` 
+
+```json
+{
+    "polkaholic": {
+        "apiKey": "<YOU_API_KEY>",
+        "baseUrl": "https://api.polkaholic.io"
+    },
+
+    "bigquery": {
+        "projectId": "<YOU_PROJECT_ID>"
+    },
+}
+```
+
+然后，通过下面的命令运行测试。
+
 ```shell
 make tests
 ```
