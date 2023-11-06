@@ -226,4 +226,4 @@ make lint
 
 ## 许可证
 
-请常看 [LICENSE](../LICENSE)
+请查看 [LICENSE](../LICENSE)

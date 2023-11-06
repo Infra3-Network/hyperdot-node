@@ -50,3 +50,4 @@ vendor
 *__debug*
 config/hyperdot.json
 config/hyperdot-gcloud-iam.json
+tests/hyperdot.db
