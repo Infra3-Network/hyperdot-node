@@ -7,11 +7,11 @@
         "addr": ":3030"
     },
     "bigquery": {
-        "projectId": "substarte-etl"
+        "projectId": "hyperdot"
     },
     "localStore": {
         "bolt": {
-            "path": "../../.local/hyperdot.db"
+            "path": "hyperdot.db"
         }
     },
     "postgres": {

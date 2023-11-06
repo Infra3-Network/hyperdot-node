@@ -1,5 +1,20 @@
 version: '3'
 services:
+  hyperdot-node:
+    image: hyperdot-node:latest
+    container_name: hyperdot-node
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    links:
+      - postgres
+      - redis
+      - minio
+    environment:
+      - http_proxy=http://192.168.0.109:17890
+      - https_proxy=http://192.168.0.109:17890
+
   postgres:
     image: postgres:16rc1
     container_name: hyperdot-postgres
