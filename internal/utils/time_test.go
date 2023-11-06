@@ -1,7 +1,6 @@
 package utils_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -50,15 +49,11 @@ func TestParseTimeRange(t *testing.T) {
 func TestGetTimeBefore(t *testing.T) {
 	now := time.Now()
 	t1 := utils.GetTimeBefore(7)
-	format := t1.Format("2006-01-02 15:04:05")
-	fmt.Println(format)
 	if t1.After(now) {
 		t.Fatal("invalid time")
 	}
 
 	t2 := utils.GetTimeBeforeDays(7)
-	format = t2.Format("2006-01-02 15:04:05")
-	fmt.Println(format)
 	if t2.After(now) {
 		t.Fatal("invalid time")
 	}

@@ -91,7 +91,6 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("Error making GET request:", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -99,7 +98,6 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 	var chains []datamodel.ChainModel
 	err = json.NewDecoder(resp.Body).Decode(&chains)
 	if err != nil {
-		fmt.Println("Error decoding JSON response:", err)
 		return nil, err
 	}
 
@@ -213,6 +211,5 @@ func processTables(relayChainName string, tables []datamodel.Table, chainTableMa
 			(*chainTableMap)[chainId] = []datamodel.Table{table}
 		}
 	}
-	fmt.Println("chainTableMapLen: ", len(*chainTableMap))
 	return nil
 }

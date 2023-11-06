@@ -245,7 +245,7 @@ func (s *Service) GetQueryHandler() gin.HandlerFunc {
 		result := s.db.First(&query, id)
 		if result.Error != nil {
 			if result.Error == gorm.ErrRecordNotFound {
-				base.ResponseErr(ctx, http.StatusOK, "query not found")
+				base.ResponseErr(ctx, http.StatusNotFound, "query not found")
 				return
 			}
 			base.ResponseErr(ctx, http.StatusInternalServerError, result.Error.Error())
@@ -755,7 +755,6 @@ func (s *Service) getUserQueryChart(ctx *gin.Context, userId uint) {
 				AND tb1.user_id = ? 
 			`
 		sql = fmt.Sprintf(sql, tb1, tb2)
-		fmt.Println(sql)
 
 	} else {
 		sql = `

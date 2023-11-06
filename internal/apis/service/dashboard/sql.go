@@ -100,7 +100,6 @@ func (s *Service) prepareListSQL(params *prePareListSQLParams) (queryRaw *gorm.D
 		)
 		queryRaw = s.db.Raw(sql, params.CurrentUserId, params.PageSize, params.Page, params.PageSize)
 
-		fmt.Println(queryRaw.Statement.SQL.String())
 		countSql := fmt.Sprintf(prepareCountSql, tb1,
 			fmt.Sprintf("AND tb1.created_at BETWEEN '%s' AND LOCALTIMESTAMP",
 				timeRangeFormat), // time range
