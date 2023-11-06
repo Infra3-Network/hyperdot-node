@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"infra-3.xyz/hyperdot-node/internal/apis/service/user"
@@ -16,7 +17,7 @@ func TestUserCreateAccount(t *testing.T) {
 	router := apiserver.GetEngine()
 	w := httptest.NewRecorder()
 	req, _ := MakeTokenRequest("POST", "/apis/v1/user/auth/createAccount", user.RequestCreateAccount{
-		Username: "foo",
+		Username: fmt.Sprintf("foo-%d", time.Now().Unix()),
 		Password: "foo",
 		Email:    "foo@email.com",
 		Provider: "password",
@@ -57,9 +58,10 @@ func TestUserGet(t *testing.T) {
 func TestUserUpdate(t *testing.T) {
 	router := apiserver.GetEngine()
 	w := httptest.NewRecorder()
+	username := fmt.Sprintf("bar-%d", time.Now().Unix())
 	req, _ := MakeTokenRequest("PUT", "/apis/v1/user", datamodel.UserModel{
 		UserBasic: datamodel.UserBasic{
-			Username: "bar",
+			Username: username,
 		},
 	})
 	router.ServeHTTP(w, req)
@@ -69,7 +71,7 @@ func TestUserUpdate(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, "bar", newUser.Data.Username)
+	assert.Equal(t, username, newUser.Data.Username)
 }
 
 func TestQueryRun(t *testing.T) {

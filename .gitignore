@@ -47,4 +47,6 @@ vendor
 
 # Developer usage dir
 .local
-*/__debug_bin
+*__debug*
+config/hyperdot.json
+config/hyperdot-gcloud-iam.json

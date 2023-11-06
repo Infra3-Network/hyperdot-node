@@ -1,6 +1,20 @@
 
 ## Why hyperdot-node
 
+## Installation 
+
+There are two options for installing and running the hyperdot-node server:
+1. [Docker Setup Guide]
+2. [Standlone Mode Guide]
+
+## 
+
+## Docker Setup Guide
+
+Running the app with Docker allows for minimal installation and a quick setup. This is recommended **for evaluation use-cases only**, such as local development builds.
+
+
+
 
 ## Quick Start
 
