@@ -91,7 +91,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.Response"
+                        }
                     }
                 }
             },
@@ -120,7 +123,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.Response"
+                        }
                     }
                 }
             }
@@ -394,7 +400,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.Response"
+                        }
                     }
                 }
             },
@@ -421,7 +430,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/base.BaseResponse"
+                        }
                     }
                 }
             }
@@ -1420,6 +1432,37 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "base.BaseResponse": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "integer"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dashboard.Response": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/datamodel.DashboardModel"
+                },
+                "errorCode": {
+                    "type": "integer"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "dataengine.FieldSchema": {
             "type": "object",
             "properties": {

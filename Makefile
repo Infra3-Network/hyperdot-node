@@ -21,6 +21,14 @@ build-arm:
 		--build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
 		.
 
+.PHONY: up-docker
+up-docker: 
+	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml up -d
+
+.PHONY: stop-docker
+stop-docker: 
+	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml stop
+
 .PHONY: up-test
 up-test: 
 	docker-compose -f tests/docker-compose.yaml up -d

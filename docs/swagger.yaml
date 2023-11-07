@@ -1,4 +1,24 @@
 definitions:
+  base.BaseResponse:
+    properties:
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
+  dashboard.Response:
+    properties:
+      data:
+        $ref: '#/definitions/datamodel.DashboardModel'
+      errorCode:
+        type: integer
+      errorMessage:
+        type: string
+      success:
+        type: boolean
+    type: object
   dataengine.FieldSchema:
     properties:
       description:
@@ -424,6 +444,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/dashboard.Response'
       summary: Create dashboard
       tags:
       - Dashboard apis
@@ -443,6 +465,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/dashboard.Response'
       summary: Update dashboard
       tags:
       - Dashboard apis
@@ -462,6 +486,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/base.BaseResponse'
       summary: Delete dashboard
       tags:
       - Dashboard apis
@@ -480,6 +506,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/dashboard.Response'
       summary: Get dashboard
       tags:
       - Dashboard apis
