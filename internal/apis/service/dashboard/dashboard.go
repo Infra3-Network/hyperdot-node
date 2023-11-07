@@ -96,7 +96,7 @@ func (s *Service) RouteTables() []base.RouteTable {
 // @Accept application/json
 // @Produce application/json
 // @Param id path int true "dashboard id"
-// @Success 200
+// @Success 200 {object} Response
 // @Router /apis/v1/dashboard/{id} [get]
 func (s *Service) GetDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -124,7 +124,10 @@ func (s *Service) GetDashboardHandler() gin.HandlerFunc {
 			return
 		}
 
-		base.ResponseWithData(ctx, dashboard)
+		ctx.JSON(http.StatusOK, Response{
+			BaseResponse: base.ResponseOk(),
+			Data:         dashboard,
+		})
 	}
 }
 
@@ -262,7 +265,6 @@ func (s *Service) ListDashboardHandler() gin.HandlerFunc {
 			"dashboards": dashboards,
 			"total":      total,
 		})
-
 	}
 }
 
@@ -516,7 +518,7 @@ func (s *Service) ListBrowseUserDashboardHandler() gin.HandlerFunc {
 // @Accept application/json
 // @Produce application/json
 // @Param dashboard body datamodel.DashboardModel true "dashboard"
-// @Success 200
+// @Success 200 {object} Response
 // @Router /apis/v1/dashboard [post]
 func (s *Service) CreateDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -539,7 +541,10 @@ func (s *Service) CreateDashboardHandler() gin.HandlerFunc {
 			return
 		}
 
-		base.ResponseWithData(ctx, req)
+		ctx.JSON(http.StatusOK, Response{
+			BaseResponse: base.ResponseOk(),
+			Data:         req,
+		})
 	}
 }
 
@@ -549,7 +554,7 @@ func (s *Service) CreateDashboardHandler() gin.HandlerFunc {
 // @Accept application/json
 // @Produce application/json
 // @Param dashboard body datamodel.DashboardModel true "dashboard"
-// @Success 200
+// @Success 200 {object} Response
 // @Router /apis/v1/dashboard [put]
 func (s *Service) UpdateDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -585,7 +590,10 @@ func (s *Service) UpdateDashboardHandler() gin.HandlerFunc {
 			}
 		}
 
-		base.ResponseWithData(ctx, req)
+		ctx.JSON(http.StatusOK, Response{
+			BaseResponse: base.ResponseOk(),
+			Data:         req,
+		})
 	}
 }
 
@@ -595,7 +603,7 @@ func (s *Service) UpdateDashboardHandler() gin.HandlerFunc {
 // @Accept application/json
 // @Produce application/json
 // @Param id path int true "dashboard id"
-// @Success 200
+// @Success 200 {object} base.BaseResponse
 // @Router /apis/v1/dashboard/{id} [delete]
 func (s *Service) DeleteDashboardHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
