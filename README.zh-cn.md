@@ -66,13 +66,27 @@ Hyperdot-node 需要从 Google Bigquery 上查询数据，因此在本地运行 
    ```shell
    make build/docker-arm
    ```
-6. 通过下面的命令启动或停止 hyperdot-node
+6. 修改基础架构层容器配置（如果您不需要更改，可以跳过）
+   通过修改基础架构层的镜像配置，你可以数据允许您持久化到本地。
    ```shell
-   make up-docker
-   make stop-docker
+    cp orchestration/docker-compose/.env-sample orchestration/docker-compose/.env 
    ```
-   如果您本地没有 hyperdot-node 镜像，该命令首先会编译 hyperdot-node 镜像，并启动 `postgres`, `redis`, `minio` 基础层服务。
-7. 现在您应该启动了 hyperdot-node 服务，试着访问 http://localhost:3030/apis/v1/swager/index.html 看看吧！
+   您可以修改  `.env` 文件中的内容，例如基础架构层容器的持久化路径。
+   
+7. 通过下面的命令启动、停止或删除基础架构层的容器
+   ```shell
+   # start if need
+   make up-infra
+
+   # stop if need
+   make stop-infra
+
+   # remove if need
+   make rm-infra
+   ```
+8. 启动 hyperdot-node 容器
+
+8. 现在您应该启动了 hyperdot-node 服务，试着访问 http://localhost:3030/apis/v1/swager/index.html 看看吧！
 
 
 

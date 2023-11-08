@@ -1,24 +1,24 @@
 version: '3'
 services:
-  hyperdot-node:
-    build: ../../
-    image: hyperdot-node:latest
-    container_name: hyperdot-node
-    depends_on:
-      - postgres
-      - redis
-      - minio
-    links:
-      - postgres
-      - redis
-      - minio
-    environment:
-      - http_proxy=http://192.168.124.42:17890
-      - https_proxy=http://192.168.124.42:17890
-    volumes:
-      - ../../config/hyperdot.json:/app/config/hyperdot.json
-    ports:
-      - 3030:3030
+  # hyperdot-node:
+  #   build: ../../
+  #   image: hyperdot-node:latest
+  #   container_name: hyperdot-node
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #     - minio
+  #   links:
+  #     - postgres
+  #     - redis
+  #     - minio
+  #   environment:
+  #     - http_proxy=http://192.168.124.42:17890
+  #     - https_proxy=http://192.168.124.42:17890
+  #   volumes:
+  #     - ../../config/hyperdot.json:/app/config/hyperdot.json
+  #   ports:
+  #     - 3030:3030
   postgres:
     image: postgres:16rc1
     container_name: hyperdot-postgres
@@ -29,7 +29,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/hyperdot/postgres/data
+      - ${PG_VOLUME_DATA:-/var/lib/hyperdot/postgres/data}:/var/lib/postgresql/data
 
   redis:
     image: redis:7
@@ -37,21 +37,20 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/var/lib/hyperdot/redis/data
+      - ${REDIS_VOLUME_DATA:-/var/lib/hyperdot/redis/data}:/data
   
   minio:
+    privileged: true
     image: bitnami/minio:latest
-    container_name: minio
+    container_name: hyperdot-minio
     environment:
       - MINIO_ROOT_USER=hyperdot
       - MINIO_ROOT_PASSWORD=hyperdot
     volumes:
-      - /var/lib/hyperdot/minio:/data
+      - ${MINIO_VOLUME_DATA:-/var/lib/hyperdot/minio/data}:/bitnami/minio/data
     ports:
       - "9000:9000"
       - "9001:9001"
     restart: always 
-volumes:
-  postgres_data:
-  redis_data:
+
 
