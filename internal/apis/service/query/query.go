@@ -133,36 +133,39 @@ func (s *Service) GetQueryEngineDatasetHandle() gin.HandlerFunc {
 // @Tags query apis
 // @Accept application/json
 // @Produce application/json
-// @Param query query string true "q"
-// @Param engine query string true "engine"
+// @Param body body RequestRunQuery true "query body"
 // @Success 200 {object} ResponseRun
 // @Router /query/run [get]
 func (s *Service) RunHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		query := ctx.Query("q")
-		engineName := ctx.Query("engine")
+		var request RequestRunQuery
+		if err := ctx.ShouldBindJSON(&request); err != nil {
+			base.ResponseErr(ctx, http.StatusBadRequest, "bind error: %v", err)
+			return
+		}
+
 		_, err := base.GetCurrentUserId(ctx)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		if len(query) == 0 {
+		if len(request.Query) == 0 {
 			base.ResponseErr(ctx, http.StatusBadRequest, "query engine is required")
 			return
 		}
-		if len(engineName) == 0 {
+		if len(request.Engine) == 0 {
 			base.ResponseErr(ctx, http.StatusBadRequest, "query is required")
 			return
 		}
 
-		engine, ok := s.engines[engineName]
+		engine, ok := s.engines[request.Engine]
 		if !ok {
-			base.ResponseErr(ctx, http.StatusBadRequest, "The %s query engine unsupported now", engineName)
+			base.ResponseErr(ctx, http.StatusBadRequest, "The %s query engine unsupported now", request.Engine)
 			return
 		}
 
-		iter, err := engine.Run(context.Background(), query)
+		iter, err := engine.Run(context.Background(), request.Query)
 		if err != nil {
 			base.ResponseErr(ctx, http.StatusBadRequest, "query error: %v", err)
 			return
@@ -1164,7 +1167,7 @@ func (s *Service) Name() string {
 func (s *Service) RouteTables() []base.RouteTable {
 	return []base.RouteTable{
 		{
-			Method:  "GET",
+			Method:  "POST",
 			Path:    s.group + "/run",
 			Handler: s.RunHandler(),
 		},
