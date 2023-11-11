@@ -33,6 +33,11 @@ stop-infra:
 rm-infra: 
 	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml down
 
+.PHONY: up-hyperdot-node
+up-hyperdot-node: 
+	echo "todo..."
+	# sudo docker-compose -f orchestration/docker-compose/docker-compose.yml down
+
 .PHONY: up-test
 up-test: 
 	docker-compose -f tests/docker-compose.yaml up -d

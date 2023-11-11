@@ -85,8 +85,16 @@ Hyperdot-node 需要从 Google Bigquery 上查询数据，因此在本地运行 
    make rm-infra
    ```
 8. 启动 hyperdot-node 容器
+   ```shell
+   make up-hyperdot-node
+   ```
 
-8. 现在您应该启动了 hyperdot-node 服务，试着访问 http://localhost:3030/apis/v1/swager/index.html 看看吧！
+   上述命令将会自动 `link` 前面基础架构层的容器，hyperdot-node 内部将使用 `link` 的容器名称作为地址，如果您不想使用 `link` 的地址，可以使用下面的命令，但您需要确保配置文件中所需的服务的地址正确。
+   ```shell
+   make up-nolink-hyperdot-node
+   ```
+
+9.  现在您应该启动了 hyperdot-node 服务，试着访问 http://localhost:3030/apis/v1/swager/index.html 看看吧！
 
 
 
@@ -116,11 +124,15 @@ Hyperdot-node 需要从 Google Bigquery 上查询数据，因此在本地运行 
     CGO_ENABLED=0 GOOS=linux go build -o /path/to/hyperdot-node cmd/node/main.go
    ```
 2. 要运行 hyperdot-node，您需要更改您的配置来集成基础层系统，您可以参考[配置](#配置) 部分查看如何更改。
-3. 运行程序，你可以通过执行编译好的 golang 程序
+3. 您需要设置 Google 应用凭据，对于 Linux/Macos 用户来说，您可以通过下面命令设置哦
+   ```shell
+   export GOOGLE_APPLICATION_CREDENTIALS="KEY_PATH"
+   ```
+4. 运行程序，你可以通过执行编译好的 golang 程序
     ```shell
     /path/to/hyperdot-node -config=/path/to/hyperdot.json
     ```
-4. 试着访问 http://localhost:3030/apis/v1/swager/index.html 看看吧！
+5. 试着访问 http://localhost:3030/apis/v1/swager/index.html 看看吧！
 
 ## 配置
 我们提供了一个示例配置 `config/hyperdot-sample.json`，你可以参考该配置进行修改

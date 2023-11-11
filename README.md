@@ -46,46 +46,67 @@ After preparing Google Application Credentials, follow these steps to get ready:
 
 ## Docker Installation Guide
 
-Running the application using Docker allows for minimal installation and quick setup. It is recommended for use cases such as local development builds.
+Running the application using Docker allows for minimal setup and quick deployment. It is recommended for evaluation purposes, such as local development.
 
-1. Clone this project to your local machine: `git clone https://github.com/Infra3-Network/hyperdot-node.git`.
+1. Clone the project to your local machine:
+   ```shell
+   git clone https://github.com/Infra3-Network/hyperdot-node.git
+   ```
 
-2. Copy `config/hyperdot-sample.json` as `config/hyperdot.json`.
+2. Copy `config/hyperdot-sample.json` to `config/hyperdot.json`.
 
-3. Rename the application credentials file you obtained in step 4 of the preparation as `hyperdot-gcloud-iam.json` and copy it to the `config` directory.
+3. Rename the application credentials file you obtained in preparation step 4 to `hyperdot-gcloud-iam.json` and copy it to the `config` directory.
 
-4. Modify the configuration in `config/hyperdot.json`. For example, if the project you used in step 1 of the preparation is named `foo`, you need to update the configuration like this:
-
+4. Modify the configuration in `config/hyperdot.json`. For example, if you used the project 'foo' in preparation step 1, adjust the configuration as follows:
    ```json
    {
-       "bigquery": {
-           "projectId": "foo"
-       }
+      "bigquery": {
+        "projectId": "foo"
+      }
    }
    ```
 
 5. Build the Docker image:
-
    ```shell
    make build/docker
    ```
-
-   If you are using a Mac with an M1/M2/M3 chip, you can compile an ARM image:
-
+   If you are using macOS with an M1/2/3 chip, you can build an ARM image with:
    ```shell
    make build/docker-arm
    ```
 
-6. Start or stop the hyperdot-node using the following commands:
-
+6. Modify the infrastructure layer container configuration (you can skip this if you don't need to make changes). You can enable local data persistence by adjusting the infrastructure layer's image configuration:
    ```shell
-   make up-docker
-   make stop-docker
+   cp orchestration/docker-compose/.env-sample orchestration/docker-compose/.env
+   ```
+   You can modify the contents of the `.env` file, such as the persistence path for the infrastructure layer container.
+
+7. Start, stop, or remove the infrastructure layer containers with the following commands:
+   ```shell
+   # Start if needed
+   make up-infra
+
+   # Stop if needed
+   make stop-infra
+
+   # Remove if needed
+   make rm-infra
    ```
 
-   If you don't have the hyperdot-node image locally, these commands will first build the hyperdot-node image and start the foundational services such as `postgres`, `redis`, and `minio`.
+8. Start the hyperdot-node container:
+   ```shell
+   make up-hyperdot-node
+   ```
 
-7. You should now have the hyperdot-node service up and running. Try accessing [http://localhost:3030/apis/v1/swagger/index.html](http://localhost:3030/apis/v1/swagger/index.html) to explore it!
+   The above command will automatically 'link' the infrastructure layer containers. Inside hyperdot-node, the linked container names will be used as addresses. If you don't want to use 'link' addresses, you can use the following command. However, ensure that the addresses of the required services in the configuration file are correct:
+   ```shell
+   make up-nolink-hyperdot-node
+   ```
+
+9. Now, the hyperdot-node service should be running. Try accessing http://localhost:3030/apis/v1/swagger/index.html to explore!
+
+
+
 
 ## Source Code Installation Guide
 
@@ -119,13 +140,20 @@ Follow the steps below to quickly run the hyperdot-node server:
 
 2. To run hyperdot-node, you need to configure it to integrate with the foundational system. Refer to the [Configuration](#configuration) section for instructions on how to make these changes.
 
-3. Run the program by executing the compiled Golang program:
+3. You need to set up Google application credentials. For Linux/MacOS users, you can do this with the following command:
+
+   ```shell
+   export GOOGLE_APPLICATION_CREDENTIALS="KEY_PATH"
+   ```
+
+   Replace `"KEY_PATH"` with the actual path to your Google application credentials file.
+4. Run the program by executing the compiled Golang program:
 
    ```shell
    /path/to/hyperdot-node -config=/path/to/hyperdot.json
    ```
 
-4. Try accessing [http://localhost:3030/apis/v1/swagger/index.html](http://localhost:3030/apis/v1/swagger/index.html) to explore it!
+5. Try accessing [http://localhost:3030/apis/v1/swagger/index.html](http://localhost:3030/apis/v1/swagger/index.html) to explore it!
 
 ## Advance Configuration
 
