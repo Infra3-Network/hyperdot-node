@@ -54,3 +54,5 @@ tests/hyperdot.db
 *hyperdot.test.json
 *.env
 orchestration/docker-compose/k8s/app.yaml
+main.go
+*.db
