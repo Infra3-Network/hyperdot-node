@@ -1,0 +1,326 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dp-a9rdmi1dk78h2-clusterip
+  namespace: hyperdot
+spec:
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: dp-a9rdmi1dk78h2
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dp-a9rdmi1dk78h2
+  namespace: hyperdot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dp-a9rdmi1dk78h2
+  template:
+    metadata:
+      labels:
+        app: dp-a9rdmi1dk78h2
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16rc1
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: dp-a9rdmi1dk78h2
+            - name: POSTGRES_USER
+              value: dp-a9rdmi1dk78h2
+            - name: POSTGRES_PASSWORD
+              value: dp-a9rdmi1dk78h2
+          volumeMounts:
+            - name: dp-a9rdmi1dk78h2-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: dp-a9rdmi1dk78h2-data
+          persistentVolumeClaim:
+            claimName: dp-a9rdmi1dk78h2-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dp-a9rdmi1dk78h2-pvc
+  namespace: hyperdot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dp-4c5dmi1dk78h2-svc
+  namespace: hyperdot
+spec:
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+  selector:
+    app: dp-4c5dmi1dk78h2
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dp-4c5dmi1dk78h2
+  namespace: hyperdot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dp-4c5dmi1dk78h2
+  template:
+    metadata:
+      labels:
+        app: dp-4c5dmi1dk78h2
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: dp-4c5dmi1dk78h2-data
+              mountPath: /data
+      volumes:
+        - name: dp-4c5dmi1dk78h2-data
+          persistentVolumeClaim:
+            claimName: dp-4c5dmi1dk78h2-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dp-4c5dmi1dk78h2-pvc
+  namespace: hyperdot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dp-4c5d2jndk78h2-svc
+  namespace: hyperdot
+spec:
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+      name: console
+    - protocol: TCP
+      port: 9001
+      targetPort: 9001
+      name: api
+  selector:
+    app: dp-4c5d2jndk78h2
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dp-4c5d2jndk78h2
+  namespace: hyperdot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dp-4c5d2jndk78h2
+  template:
+    metadata:
+      labels:
+        app: dp-4c5d2jndk78h2
+    spec:
+      containers:
+        - name: minio
+          image: bitnami/minio:latest
+          ports:
+            - containerPort: 9000
+            - containerPort: 9001
+          env:
+            - name: MINIO_ROOT_USER
+              value: hyperdot
+            - name: MINIO_ROOT_PASSWORD
+              value: hyperdot
+          volumeMounts:
+            - name: dp-4c5d2jndk78h2-data
+              mountPath: /bitnami/minio/data
+      volumes:
+        - name: dp-4c5d2jndk78h2-data
+          persistentVolumeClaim:
+            claimName: dp-4c5d2jndk78h2-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dp-4c5d2jndk78h2-pvc
+  namespace: hyperdot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dp-2j5d2j4ck789k-config
+  namespace: hyperdot
+data:
+  hyperdot.json: |
+    {
+        "polkaholic": {
+            "apiKey": "aaed8e0afefcf294e146167fbca9814a",
+            "baseUrl": "https://api.polkaholic.io"
+        },
+        "apiserver": {
+            "addr": ":3030"
+        },
+        "bigquery": {
+            "projectId": "hyperdot"
+        },
+        "localStore": {
+            "bolt": {
+                "path": "hyperdot.db"
+            }
+        },
+        "postgres": {
+            "host": "dp-a9rdmi1dk78h2-clusterip.ns-efd01fs6etdtgreod1625424h8.svc",
+            "port": 5432,
+            "user": "dp-a9rdmi1dk78h2",
+            "password": "dp-a9rdmi1dk78h2",
+            "db": "dp-a9rdmi1dk78h2",
+            "tz": "Asia/ShangHai"
+        },
+        "s3": {
+            "endpoint": "dp-4c5d2jndk78h2-svc.ns-efd01fs6etdtgreod1625424h8.svc:9000",
+            "useSSL": false,
+            "accessKey": "hyperdot",
+            "secretKey": "hyperdot"
+        },
+        "redis": {
+            "addr": "dp-4c5dmi1dk78h2-svc.ns-efd01fs6etdtgreod1625424h8.svc:6379"
+        }
+    }
+  hyperdot-gcloud-iam.json: |
+    {
+      "type": "service_account",
+      "project_id": "hyperdot",
+      "private_key_id": "c7a0b4ebe3276f3b2c39ad9a4ec468cabc19fb9d",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCKfxHJVH0DLRmg\n8dHU1s5/SeDcksnldpXjzkxhKbIG7DEXZ4TXc5yV1WyTDauUXxwEklgO2Z56VeAt\nHvwrR95Z/gtCQIlQe3WtRHSqvmmPb1vAzxox0OuXGMkDoJa0Ty6VXTgCxz4E8VyX\n9ff9jxMlJpvdH4L4alMAEC3MqAuIxz7+GhulZSTYafd8nQBFcY9ucVW5LUCoxen0\nDlKHS9GLXs4OIi7ObAY/GuH7r1aq+inb8bEzWrmUxwzBom+7L6EDzEEITLaAhRuo\ntckET/Tc32uHFXnIx5nvkiTcBVGyI4ljY/BehH6iLNu7QJGv2GfDLwFO2k5PAq5t\nImLecSLRAgMBAAECggEABnsiycab4QRWcNslbsMslPVP7KfWgy0/n2ed2GV7RhVT\nHh1t2yfhryX2d5KKBx6aRjZ+S2zwnG3yAyUyN2jyD/OySC6Snm217d6dt7MYZ9TA\nuO7tcrZW8qeqGcgv3+PdXLJTjCxnC76AZEC86E8uiKxcBTF+egHTvNWE/HuX/+sC\ntlc5QqFZaMCkZ2+m2S72/tJtWJsYy+lKBv/YDUJzHkpgeEQHTStHXAca5H49Wn+k\nC3oR5WTyARjpKKDgcpMVnNTdu3xjL7ac0iTrR3Gh/Mqe2IoQ5rD4kCrdOEyhczZg\nwJPxeJcBbVLZLrgqAN0R/gI4/pBqZRLx9WZrfhEwhwKBgQDDQSQ7qNYbuqWbDpAO\nHopiK7bBME4txvyxsaiawQ7bMZPvyyYS6nwDtRugcCsIJLBpSt7WxFdTieXbIYFd\nhmiK04xQoU9auo4A8d00597hUi5JkHcWeTIagC2Ncil7UkfYSqNMLHeaWllgZQKO\nVteMvO8sjt6R39idiSDF0fbcXwKBgQC1lXuT18eHtag3o6ZjezaSvaLt4GmJeDnx\nNop4SLGLJoMdXque6enCy5GUBdKXDqgkubAdTJDW4aomPfJ8hyZQh5tWZEfbuuho\n/bymKrH7nnPILIzSWedWIcS4ifeEFRufJ01m3gzHbUTWrecHXbMVgUyr/aZt6gXu\n3DYu3VBOzwKBgCoY92jthAxCd8Ywo5qHtypnZmXMtm5kQsNFHKcRDNTxoYXH9ROK\n/uYFvEkhJgYBcw+glt8TQgi+6JIQbUXu3sdfyRbxUJytMES/4QOxInrOLzCpNyPf\nSZAxJqEihhMSsG7P2NlplPfwluiTnrN1wc+URLUEsLQe4SNGF4zPMjxdAoGAc0zd\n0Ty8t9GDZQEHEDgWqQq9QCq1GNM8h4vIVSRjiCYGL0oD075X7pbwc3tXAxANeHRn\n/dK2TZuxPOMs7CGtFIlm+25lqoJ+PNyRQzntFgbBIiQXryHjIPAER+FjR31XsrF0\nFpN8rc0WXvLBtg2rP0aA9tzzJuvopIkz5oIlEkUCgYBkIiVK6ynrexGkB2FQ30fi\neyyYN/IiBfo9JGnH6k2fmEkqxKNngFCRrpLlgsjhyXqBmybva3apFafF6he5M1Xd\n1rJ/w/D7FRnTR5CAJfHWyv3wOOFOBfWqA2N+61o4PFcQ1tIiDQXbL2XEhoJmcMfd\nBmuX5R9QA1Z6QzGMiap3kw==\n-----END PRIVATE KEY-----\n",
+      "client_email": "hyperdot@hyperdot.iam.gserviceaccount.com",
+      "client_id": "100561880243252871227",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/hyperdot%40hyperdot.iam.gserviceaccount.com",
+      "universe_domain": "googleapis.com"
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dp-2j5d2j4ck789k-clusterip
+  namespace: hyperdot
+spec:
+  ports:
+    - protocol: TCP
+      port: 3030
+      targetPort: 3030
+      name: api
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: console
+  selector:
+    app: dp-2j5d2j4ck789k
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dp-2j5d2j4ck789k
+  namespace: hyperdot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dp-2j5d2j4ck789k
+  template:
+    metadata:
+      labels:
+        app: dp-2j5d2j4ck789k
+    spec:
+      nodeName: s106-k8s-worker-1
+      containers:
+        - name: dp-2j5d2j4ck789k-node
+          image: hyperdot/node:3ea9bca
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3030
+          volumeMounts:
+            - name: dp-2j5d2j4ck789k-config
+              mountPath: /app/config
+            - name: dp-2j5d2j4j6f89k-config
+              mountPath: /app/config
+        - name: dp-2j5d2j4ck789k-console
+          image: hyperdot/fronted:c7bc5d5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+
+      volumes:
+        - name: dp-2j5d2j4ck789k-config
+          configMap:
+            name: dp-2j5d2j4ck789k-config
+        - name: dp-2j5d2j4j6f89k-config
+          configMap:
+            name: dp-2j5d2j4j6f89k-config
+
+---
+apiVersion: "networking.k8s.io/v1beta1"
+kind: "Ingress"
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: "kong"
+  name: "dp-2j5d2j4ck789k-ingress"
+  namespace: hyperdot
+spec:
+  rules:
+    - host: "dp-2j5d2j4ck789k.gw106.oneitfarm.com"
+      http:
+        paths:
+          - backend:
+              serviceName: "dp-2j5d2j4ck789k-clusterip"
+              servicePort: 80

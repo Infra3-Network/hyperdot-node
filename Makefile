@@ -3,12 +3,18 @@ GO?=$(shell which go)
 export GOBIN := $(BIN)
 export PATH := $(BIN):$(PATH)
 
+# proxy
+HTTP_PROXY ?= ""
+HTTPS_PROXY ?= ""
+
 .PHONY: build/docker
 build/docker: ## Build the docker image.
 	DOCKER_BUILDKIT=1 \
 	docker build \
 		-f ./Dockerfile \
 		-t hyperdot/node:$(VERSION) \
+		--build-arg "HTTP_PROXY=$(HTTP_PROXY)" \
+		--build-arg "HTTPS_PROXY=$(HTTPS_PROXY)" \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
 		.
