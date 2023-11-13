@@ -27,8 +27,8 @@ type QueryModel struct {
 	Unsaved     bool         `json:"unsaved"`
 	Stars       uint         `json:"stars"`
 	Charts      []ChartModel `json:"charts" gorm:"-"`
-	CreatedAt   time.Time    `json:"created_At"`
-	UpdatedAt   time.Time    `json:"updated_At"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
 func (QueryModel) TableName() string {
