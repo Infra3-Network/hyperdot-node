@@ -234,6 +234,10 @@ cp tests/hyperdot-sample.test.json  tests/hyperdot.test.json
 然后，通过下面的命令运行测试。
 
 ```shell
+go mod tidy 
+
+go mod vendor
+
 make tests
 ```
 

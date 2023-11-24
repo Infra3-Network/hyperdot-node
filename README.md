@@ -259,6 +259,11 @@ Modify the `tests/hyperdot.test.json` configuration by updating the `apiKey` and
 Then, run the tests with the following command:
 
 ```shell
+# Ensure dependencies installed
+go mod tidy 
+
+go mod vendor
+
 make tests
 ```
 
