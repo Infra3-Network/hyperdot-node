@@ -81,29 +81,19 @@ Running the application using Docker allows for minimal setup and quick deployme
    ```
    You can modify the contents of the `.env` file, such as the persistence path for the infrastructure layer container.
 
-7. Start, stop, or remove the infrastructure layer containers with the following commands:
+7. Start, stop, or remove the containers with the following commands:
    ```shell
-   # Start if needed
-   make up-infra
+   # Start
+   make up
 
-   # Stop if needed
-   make stop-infra
+   # Stop
+   make stop
 
-   # Remove if needed
-   make rm-infra
+   # Remove
+   make rm
    ```
 
-8. Start the hyperdot-node container:
-   ```shell
-   make up-hyperdot-node
-   ```
-
-   The above command will automatically 'link' the infrastructure layer containers. Inside hyperdot-node, the linked container names will be used as addresses. If you don't want to use 'link' addresses, you can use the following command. However, ensure that the addresses of the required services in the configuration file are correct:
-   ```shell
-   make up-nolink-hyperdot-node
-   ```
-
-9. Now, the hyperdot-node service should be running. Try accessing http://localhost:3030/apis/v1/swagger/index.html to explore!
+8. Now, the hyperdot-node service should be running. Try accessing http://localhost:3030/apis/v1/swagger/index.html to explore!
 
 
 
