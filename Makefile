@@ -4,15 +4,24 @@ export GOBIN := $(BIN)
 export PATH := $(BIN):$(PATH)
 
 # proxy
-HTTP_PROXY ?= ""
-HTTPS_PROXY ?= ""
+HTTP_PROXY ?= "http://192.168.1.5:17890"
+HTTPS_PROXY ?= "http://192.168.1.5:17890"
 
 .PHONY: build/docker
 build/docker: ## Build the docker image.
 	DOCKER_BUILDKIT=1 \
 	docker build \
 		-f ./Dockerfile \
-		-t hyperdot/node:$(VERSION) \
+		-t hyperdot/fronted:$(VERSION) \
+		--build-arg "HTTP_PROXY=$(HTTP_PROXY)" \
+		--build-arg "HTTPS_PROXY=$(HTTPS_PROXY)" \
+
+.PHONY: build/docker
+build/docker: ## Build the docker image.
+	DOCKER_BUILDKIT=1 \
+	docker build \
+		-f ./Dockerfile \
+		-t hyperdot/node:latest \
 		--build-arg "HTTP_PROXY=$(HTTP_PROXY)" \
 		--build-arg "HTTPS_PROXY=$(HTTPS_PROXY)" \
 		--build-arg VERSION=$(VERSION) \
@@ -29,20 +38,28 @@ build-arm:
 
 .PHONY: up-infra
 up-infra: 
-	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml up -d
+	sudo docker-compose -f orchestration/docker-compose/infra-docker-compose.yml up -d
 
 .PHONY: stop-infra
 stop-infra: 
-	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml stop
+	sudo docker-compose -f orchestration/docker-compose/infra-docker-compose.yml stop
 
 .PHONY: rm-infra
 rm-infra: 
+	sudo docker-compose -f orchestration/docker-compose/infra-docker-compose.yml down
+
+.PHONY: up
+up: 
+	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml up -d
+
+.PHONY: stop
+stop: 
+	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml stop
+
+.PHONY: rm
+rm: 
 	sudo docker-compose -f orchestration/docker-compose/docker-compose.yml down
 
-.PHONY: up-hyperdot-node
-up-hyperdot-node: 
-	echo "todo..."
-	# sudo docker-compose -f orchestration/docker-compose/docker-compose.yml down
 
 .PHONY: up-test
 up-test: 

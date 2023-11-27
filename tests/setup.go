@@ -266,9 +266,19 @@ func MarshalResponseBody(body *bytes.Buffer, to interface{}) error {
 	return nil
 }
 
+func setupGCloud() {
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	gcloud_cred := pwd + "/hyperdot-gcloud-iam.test.json"
+	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gcloud_cred)
+}
+
 func SetupApiServer() *apis.ApiServer {
-	// setup env
 	os.Setenv("HYPETDOT_NODE_CONFIG", "hyperdot.test.json")
+
+	setupGCloud()
 
 	initCtx := context.Background()
 	cfg := initialSystemConfig()
