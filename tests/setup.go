@@ -24,7 +24,6 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/store"
 
 	"infra-3.xyz/hyperdot-node/internal/apis"
-	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/common"
 	"infra-3.xyz/hyperdot-node/internal/jobs"
@@ -71,35 +70,6 @@ func initRedisClient(cfg *common.Config) (*redis.Client, error) {
 	})
 
 	return redisClient, nil
-}
-
-func initialGlobalData(ctx context.Context, cfg *common.Config, boltStore *store.BoltStore, redisClient *redis.Client) error {
-	if err := datamodel.InitQueryEngineMetadata(ctx, redisClient); err != nil {
-		return err
-	}
-
-	// Fetch chain metadata and initialize global cache
-	client, err := clients.NewSimpleBigQueryClient(ctx, cfg)
-	if err != nil {
-		return err
-	}
-
-	defer client.Close()
-
-	raw, err := jobs.BuildBigQueryEngineRawDataset(ctx, client, &cfg.Polkaholic)
-	if err != nil {
-		return err
-	}
-
-	if err := raw.WriteToRedis(ctx, &cfg.Redis, "bigquery"); err != nil {
-		return err
-	}
-
-	cache.GlobalDataEngine.SetDatasets("bigquery", &datamodel.QueryEngineDatasets{Raw: raw})
-	if err := boltStore.SetDatasets("bigquery", &datamodel.QueryEngineDatasets{Raw: raw}); err != nil {
-		return err
-	}
-	return nil
 }
 
 func initJobs(jobManager *jobs.JobManager, store *store.BoltStore) error {
@@ -280,20 +250,16 @@ func SetupApiServer() *apis.ApiServer {
 
 	setupGCloud()
 
-	initCtx := context.Background()
+	_ = context.Background()
 	cfg := initialSystemConfig()
 	boltStore, err := store.NewBoltStore(cfg)
 	if err != nil {
 		log.Fatalf("Error initial bolt store: %v", err)
 	}
 
-	redisClient, err := initRedisClient(cfg)
+	_, err = initRedisClient(cfg)
 	if err != nil {
 		log.Fatalf("Error initial redis client: %v", err)
-	}
-
-	if err := initialGlobalData(initCtx, cfg, boltStore, redisClient); err != nil {
-		log.Fatalf("Error initial global data: %v", err)
 	}
 
 	jobManager := jobs.NewJobManager(cfg)

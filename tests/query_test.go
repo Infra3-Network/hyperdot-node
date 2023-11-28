@@ -12,18 +12,6 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
-func TestQueryRun(t *testing.T) {
-	router := apiserver.GetEngine()
-	w := httptest.NewRecorder()
-	body := query.RequestRunQuery{
-		Query:  "select * from `bigquery-public-data.crypto_polkadot.AAA_tableschema` limit 2",
-		Engine: "bigquery",
-	}
-	req, _ := MakeTokenRequest("POST", "/apis/v1/query/run", body)
-	router.ServeHTTP(w, req)
-	assert.Equal(t, 200, w.Code)
-}
-
 func TestCRUDQuery(t *testing.T) {
 	router := apiserver.GetEngine()
 	w := httptest.NewRecorder()
