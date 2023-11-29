@@ -7,10 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// JwtAuthMiddleware 基于JWT的认证中间件--验证用户是否登录
+// JwtAuthMiddleware is a middleware to verify jwt token
 func JwtAuthMiddleware() func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
-		// if url is /apis/v1/user/auth/login, next
 		if ctx.Request.URL.Path == "/apis/v1/user/auth/login" ||
 			ctx.Request.URL.Path == "/apis/v1/user/auth/createAccount" ||
 			ctx.Request.URL.Path == "/apis/v1/file" ||
@@ -26,13 +25,6 @@ func JwtAuthMiddleware() func(ctx *gin.Context) {
 			ctx.Abort()
 			return
 		}
-
-		//parts := strings.Split(authHeader, ".")
-		//if len(parts) != 3 {
-		//	ResponseErr(ctx, http.StatusUnauthorized, "invalid authorization format")
-		//	ctx.Abort()
-		//	return
-		//}
 
 		claims, err := VerifyJwtToken(authHeader)
 		if err != nil {

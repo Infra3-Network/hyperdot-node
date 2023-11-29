@@ -17,12 +17,14 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/store"
 )
 
+// ApiServer is a server to provide apis
 type ApiServer struct {
 	cfg    common.Config
 	engine *gin.Engine
 	srv    *http.Server
 }
 
+// NewApiServer creates a new ApiServer
 func NewApiServer(boltStore *store.BoltStore, cfg *common.Config,
 	db *gorm.DB,
 	engines map[string]dataengine.QueryEngine, s3Client *clients.SimpleS3Cliet) (*ApiServer, error) {
@@ -41,10 +43,12 @@ func NewApiServer(boltStore *store.BoltStore, cfg *common.Config,
 	}, nil
 }
 
+// Start starts the api server
 func (s *ApiServer) GetEngine() *gin.Engine {
 	return s.engine
 }
 
+// Start starts the api server
 func (s *ApiServer) Start() error {
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

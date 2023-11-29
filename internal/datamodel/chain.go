@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// ChainModel represents a chain model.
 type ChainModel struct {
 	ID                           string    `json:"id" gorm:"index:hyperdot_chains_idx_id"`
 	Prefix                       int       `json:"prefix"`
@@ -72,6 +73,7 @@ func (ChainModel) TableName() string {
 	return "hyperdot_chains"
 }
 
+// RelayChainModel represents a relay chain model.
 type RelayChainModel struct {
 	ChainID    uint         `json:"chainID" gorm:"index:hyperdot_relay_chain_idx_chain_id"`
 	SubChainId uint         `json:"subChainId" gorm:"index:hyperdot_relay_chain_idx_sub_chain_id"`
@@ -87,11 +89,13 @@ func HackAutoMigrate(db *gorm.DB) error {
 	return nil
 }
 
+// RelayChain is collection of chains.
 type RelayChain struct {
 	Relay  ChainModel   `json:"relay"`
 	Chains []ChainModel `json:"chains"`
 }
 
+// BigQueryDataEngine is the data engine for bigquery.
 type BigQueryDataEngine struct {
 	Name             string                 `json:"name"`
 	Relays           []string               `json:"relays"`
@@ -101,6 +105,7 @@ type BigQueryDataEngine struct {
 	SystemTables     []Table                `json:"systemTables"`
 }
 
+// ToJSON converts the data engine to json.
 func (b *BigQueryDataEngine) ToJSON() ([]byte, error) {
 	return json.Marshal(b)
 }

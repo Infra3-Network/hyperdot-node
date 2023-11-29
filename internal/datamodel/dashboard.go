@@ -2,6 +2,7 @@ package datamodel
 
 import "time"
 
+// DashboardPanelModel represents a dashboard panel model ant the text is a json string.
 type DashboardPanelModel struct {
 	ID          uint      `json:"id" gorm:"primarykey"`
 	UserID      uint      `json:"user_id" gorm:"index:idx_user_query_user_id"`
@@ -24,6 +25,7 @@ func (DashboardPanelModel) TableName() string {
 	return "hyperdot_dashboard_panels"
 }
 
+// DashboardModel represents a dashboard model ant the config is a json string.
 type DashboardModel struct {
 	ID          uint                  `json:"id" gorm:"primarykey"`
 	UserID      uint                  `json:"user_id" gorm:"index:idx_user_query_user_id"`

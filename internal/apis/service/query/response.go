@@ -23,8 +23,3 @@ type Response struct {
 	base.BaseResponse
 	Data datamodel.QueryModel `json:"data"`
 }
-
-type ListResponse struct {
-	Data []map[string]interface{} `json:"data"`
-	base.BaseResponse
-}

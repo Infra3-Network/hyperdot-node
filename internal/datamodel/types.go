@@ -7,6 +7,7 @@ import (
 	"fmt"
 )
 
+// ArrayJSON represents a json array.
 type ArrayJSON []map[string]interface{}
 
 // Scan implements the Scanner interface.

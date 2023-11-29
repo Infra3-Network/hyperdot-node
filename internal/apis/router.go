@@ -2,7 +2,6 @@ package apis
 
 import (
 	"fmt"
-	"net/http"
 
 	"infra-3.xyz/hyperdot-node/internal/apis/service/dashboard"
 	"infra-3.xyz/hyperdot-node/internal/apis/service/file"
@@ -29,28 +28,14 @@ const (
 	CURRENT_VERSION = V1
 )
 
+// Router is a router interface can be collect routers of service and
+// register to gin engine
 type Router interface {
 	Name() string
 	RouteTables() []base.RouteTable
 }
 
-type afterMiddlewareWriter struct {
-	gin.ResponseWriter
-}
-
-func CorsResponse(r *http.Request, w gin.ResponseWriter) {
-	w.Header().Add("X-TIME", "time")
-	w.Header().Add("Access-Control-Allow-Credentials", "true")
-	w.Header().Add("Access-Control-Allow-Methods", "POST,GET,OPTIONS,DELETE,PUT,HEAD,PATCH")
-	w.Header().Add("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Add("Access-Control-Allow-Headers", r.Header.Get("Access-Control-Request-Headers"))
-}
-
-func AfterMiddleware(c *gin.Context) {
-	c.Writer = &afterMiddlewareWriter{c.Writer}
-	c.Next()
-}
-
+// RouterBuilder is a builder to build gin engine
 type RouterBuilder struct {
 	enableQuery bool
 	boltStore   *store.BoltStore
@@ -60,10 +45,14 @@ type RouterBuilder struct {
 	engines     map[string]dataengine.QueryEngine
 }
 
-func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config,
+// NewRouterBuilder creates a new RouterBuilder
+func NewRouterBuilder(
+	boltStore *store.BoltStore,
+	cfg *common.Config,
 	db *gorm.DB,
 	engines map[string]dataengine.QueryEngine,
-	s3Client *clients.SimpleS3Cliet) *RouterBuilder {
+	s3Client *clients.SimpleS3Cliet,
+) *RouterBuilder {
 	return &RouterBuilder{
 		enableQuery: true,
 		boltStore:   boltStore,
@@ -74,6 +63,7 @@ func NewRouterBuilder(boltStore *store.BoltStore, cfg *common.Config,
 	}
 }
 
+// Build builds gin engine
 func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	engine := gin.Default()
 	versionUrl := fmt.Sprintf("%s/%s", BASE, CURRENT_VERSION)
@@ -82,13 +72,6 @@ func (r *RouterBuilder) Build() (*gin.Engine, error) {
 	router := engine.Group(versionUrl)
 	{
 		var svcs []Router
-		//if r.enableQuery {
-		//	svc, err := NewQueryService(r.boltStore, r.cfg)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	svcs = append(svcs, svc)
-		//}
 		svcs = append(svcs, system.New(r.cfg))
 		svcs = append(svcs, query.New(r.boltStore, r.cfg, r.db, r.engines))
 		svcs = append(svcs, dashboard.New(r.db))

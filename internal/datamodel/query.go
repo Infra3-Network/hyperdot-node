@@ -2,6 +2,7 @@ package datamodel
 
 import "time"
 
+// ChartModel represents a chart model ant the config is a json string.
 type ChartModel struct {
 	ID        uint   `json:"id" gorm:"primarykey"`
 	QueryID   uint   `json:"query_id" gorm:"index:idx_charts_id"`
@@ -16,6 +17,7 @@ func (ChartModel) TableName() string {
 	return "hyperdot_charts"
 }
 
+// DashboardModel represents a dashboard model ant the config is a json string.
 type QueryModel struct {
 	ID          uint         `json:"id" gorm:"primarykey"`
 	UserID      uint         `json:"user_id" gorm:"index:idx_user_query_user_id"`

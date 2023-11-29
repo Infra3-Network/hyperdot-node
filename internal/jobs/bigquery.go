@@ -24,6 +24,7 @@ var (
 	}
 )
 
+// BigQuerySyncer is a job to sync bigquery engine chaindata
 type BigQuerySyncer struct {
 	ctx            context.Context
 	cfg            common.Config
@@ -45,19 +46,16 @@ func NewBigQuerySyncer(cfg *common.Config, boltStore *store.BoltStore) (*BigQuer
 		boltStore:      boltStore,
 		bigqueryClient: client,
 	}, nil
+
 }
 
+// Do executes the job
 func (f *BigQuerySyncer) Do() error {
 	chainData, err := f.do()
 	if err != nil {
 		log.Printf("Error fetching bigquery engine chaindata: %v", err)
 		return err
 	}
-
-	// cache.GlobalDataEngine.SetDatasets("bigquery", chainData) // TODO: should call SetDatasets
-	// if err := f.boltStore.SetDatasets("bigquery", chainData); err != nil {
-	// 	return err
-	// }
 
 	// set raw
 	if err := chainData.Raw.WriteToRedis(f.ctx, &f.cfg.Redis, "bigquery"); err != nil {
@@ -78,38 +76,49 @@ func (f *BigQuerySyncer) do() (*datamodel.QueryEngineDatasets, error) {
 	}, nil
 }
 
+// BuildBigQueryEngineRawDataset creates a BigQuery dataset for the Polkadot and Kusama chains,
+// populating information about chains, relay chains, and associated tables.
 func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.SimpleBigQueryClient, cfg *common.PolkaholicConfig) (*datamodel.QueryEngineDatasetInfo, error) {
+	// Log the start of the BuildBigQueryEngine job
 	log.Printf("Start BuildBigQueryEngine Job")
 
+	// Create a request to fetch chain information from the Polkaholic API
 	url := fmt.Sprintf("%s/chains?limit=-1", cfg.BaseUrl)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	// Set the API key in the request header for authorization
 	req.Header.Add("Authorization", cfg.ApiKey)
 
+	// Execute the HTTP request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	// Decode the JSON response into a slice of ChainModel
 	var chains []datamodel.ChainModel
 	err = json.NewDecoder(resp.Body).Decode(&chains)
 	if err != nil {
 		return nil, err
 	}
 
+	// Create a map to quickly access chain information by ChainID
 	var chainMap = make(map[uint]datamodel.ChainModel, len(chains))
 	for _, chain := range chains {
 		chainMap[chain.ChainID] = chain
 	}
 
+	// Create a map to store metadata about relay chains
 	relayChainMap := make(map[string]*datamodel.RelayChainMetadata, 0)
 	for _, chain := range chains {
+		// Check if the chain is the relay chain for itself
 		if chain.ID == chain.RelayChain {
 			var showColor string
+			// Set color based on the chain name
 			if chain.ChainName == "Polkadot" {
 				showColor = "#E0016A"
 			} else if chain.ChainName == "Kusama" {
@@ -117,37 +126,29 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 			} else {
 				showColor = "#00C67D"
 			}
+			// Populate relay chain metadata
 			relayChainMap[chain.RelayChain] = &datamodel.RelayChainMetadata{
-				ChainID:   chain.ChainID,
-				Name:      chain.ChainName,
-				ShowColor: showColor,
-				ParaChainIDs: []uint{
-					chain.ChainID,
-				},
+				ChainID:      chain.ChainID,
+				Name:         chain.ChainName,
+				ShowColor:    showColor,
+				ParaChainIDs: []uint{chain.ChainID},
 			}
 		}
 	}
-	//relayChainMap := make(map[string]*datamodel.RelayChain)
-	//for _, chain := range chains {
-	//	if chain.ID == chain.RelayChain {
-	//		relayChainMap[chain.RelayChain] = &datamodel.RelayChain{
-	//			Relay:  chain,
-	//			Chains: make([]datamodel.Chain, 0),
-	//		}
-	//	}
-	//}
 
-	// get chains of relaychain
+	// Populate para chain IDs for each relay chain
 	for _, chain := range chains {
 		if relayChain, ok := relayChainMap[chain.RelayChain]; ok && !(chain.ID == chain.RelayChain) {
 			relayChain.ParaChainIDs = append(relayChain.ParaChainIDs, chain.ChainID)
 		}
 	}
 
+	// Create maps to store tables for each chain and cross-chain tables
 	chainTableMap := make(map[int][]datamodel.Table)
 	crossChainTables := []datamodel.Table{}
 	systemTables := []datamodel.Table{}
 
+	// Query and process tables for the Polkadot chain
 	tables, err := bigqueryClient.QueryCryptoPolkadotTableScheme(ctx)
 	if err != nil {
 		return nil, err
@@ -156,6 +157,7 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 		return nil, err
 	}
 
+	// Query and process tables for the Kusama chain
 	kusamaTables, err := bigqueryClient.QueryCryptoKusamaTableScheme(ctx)
 	if err != nil {
 		return nil, err
@@ -165,46 +167,55 @@ func BuildBigQueryEngineRawDataset(ctx context.Context, bigqueryClient *clients.
 		return nil, err
 	}
 
-	// var relays []string
-	// for relayChainName, _ := range relayChainMap {
-	// 	relays = append(relays, relayChainName)
-	// }
-
+	// Return the QueryEngineDatasetInfo containing the collected information
 	return &datamodel.QueryEngineDatasetInfo{
 		Id:          "raw",
 		Chains:      chainMap,
 		RelayChains: relayChainMap,
 		ChainTables: chainTableMap,
-	}, err
+	}, nil
 }
 
+// processTables populates tables based on relay chain name and categorizes them into cross-chain and system tables.
 func processTables(relayChainName string, tables []datamodel.Table, chainTableMap *map[int][]datamodel.Table, crossChainTables *[]datamodel.Table, systemTables *[]datamodel.Table) error {
+	// Regular expression to extract numeric chain ID from table names
 	re := regexp.MustCompile(`\d+`)
+
+	// Iterate over tables and categorize them
 	for _, table := range tables {
+		// Extract numeric chain ID from the table name
 		match := re.FindString(table.TableID)
+
+		// If no numeric chain ID is found
 		if len(match) == 0 {
+			// Check if the table is related to cross-chain transactions
 			if strings.Contains(table.TableID, "xcm") {
+				// Modify the table name and add it to cross-chain tables
 				table.TableID = fmt.Sprintf("%s_%s", relayChainName, table.TableID)
 				*crossChainTables = append(*crossChainTables, table)
 			} else if table.TableID == "asserts" {
-				// TODO:
+				// TODO: Handle asserts table
 			} else if _, ok := systemTableMap[table.TableID]; ok {
+				// Modify the table name and add it to system tables
 				table.TableID = fmt.Sprintf("%s_%s", relayChainName, table.TableID)
 				*systemTables = append(*systemTables, table)
 			}
 			continue
 		}
 
+		// Convert the numeric chain ID to an integer
 		chainId, err := strconv.Atoi(match)
 		if err != nil {
 			return err
 		}
 
+		// Adjust chain ID for Kusama chain
 		if relayChainName == "kusama" {
-			// see https://github.com/colorfulnotion/substrate-etl/tree/main/kusama
+			// See https://github.com/colorfulnotion/substrate-etl/tree/main/kusama
 			chainId += 20000
 		}
 
+		// Add the table to the corresponding chain in the chainTableMap
 		if tables, ok := (*chainTableMap)[chainId]; ok {
 			(*chainTableMap)[chainId] = append(tables, table)
 		} else {

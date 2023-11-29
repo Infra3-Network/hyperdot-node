@@ -2,6 +2,7 @@ package chains
 
 import "infra-3.xyz/hyperdot-node/internal/chains"
 
+// / Chain represents a chain in the substrate.
 type Chain struct {
 	ID                           string  `json:"id"`
 	Prefix                       int     `json:"prefix"`
@@ -60,6 +61,7 @@ type Chain struct {
 	PriceUSDPercentChange        float64 `json:"priceUSDPercentChange"`
 }
 
+// RelayChain is collection of chains.
 type RelayChain struct {
 	ChainID      int    `json:"chain_id"`
 	Name         string `json:"name"`
@@ -67,6 +69,7 @@ type RelayChain struct {
 	ParaChainIDs []int  `json:"para_chain_ids"`
 }
 
+// Dataset includes chains, relay chains and chain tables.
 type Dataset struct {
 	Chains      map[int]Chain          `json:"chains"`
 	RelayChains map[string]*RelayChain `json:"relay_chains"`

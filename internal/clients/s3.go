@@ -10,10 +10,12 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+// SimpleS3Cliet wrap minio client and it support s3-compatible storage api.
 type SimpleS3Cliet struct {
 	client *minio.Client
 }
 
+// NewSimpleS3Client creates a new simple client for s3.
 func NewSimpleS3Client(endpoint, accessKeyID, secretAccessKey string, useSSL bool) *SimpleS3Cliet {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
@@ -25,7 +27,7 @@ func NewSimpleS3Client(endpoint, accessKeyID, secretAccessKey string, useSSL boo
 	return &SimpleS3Cliet{client: client}
 }
 
-// Make bucket
+// Make a bucket by given name. if the bucket exists, it will do nothing and return nil.
 func (s *SimpleS3Cliet) MakeBucket(ctx context.Context, bucketName string) error {
 	err := s.client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 	if err != nil {
@@ -41,6 +43,7 @@ func (s *SimpleS3Cliet) MakeBucket(ctx context.Context, bucketName string) error
 	return nil
 }
 
+// Put object to associated bucket.
 func (s *SimpleS3Cliet) Put(ctx context.Context, bucketName, objectName string, reader io.Reader, objectSize int64) (*minio.UploadInfo, error) {
 	options := minio.PutObjectOptions{
 		ContentType: "application/octet-stream",
@@ -53,6 +56,7 @@ func (s *SimpleS3Cliet) Put(ctx context.Context, bucketName, objectName string, 
 	return &info, nil
 }
 
+// Get object from associated bucket.
 func (s *SimpleS3Cliet) Get(ctx context.Context, bucketName, objectName string) (*minio.Object, error) {
 	return s.client.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
 }

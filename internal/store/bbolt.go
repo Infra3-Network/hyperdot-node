@@ -62,6 +62,7 @@ func (b *BoltStore) initDB() error {
 	return tx.Commit()
 }
 
+// SetDatasets sets the datasets of a query engine.
 func (b *BoltStore) SetDatasets(queryEngine string, data *datamodel.QueryEngineDatasets) error {
 	log.Printf("SetBigQueryChainData: %v", data)
 	tx, err := b.db.Begin(true)
@@ -93,6 +94,7 @@ func (b *BoltStore) SetDatasets(queryEngine string, data *datamodel.QueryEngineD
 	return nil
 }
 
+// GetDatasets gets the datasets of a query engine by tag.
 func (b *BoltStore) GetDataset(queryEngine string, tag string) (*datamodel.QueryEngineDatasetInfo, error) {
 	tx, err := b.db.Begin(false)
 	if err != nil {
@@ -118,6 +120,7 @@ func (b *BoltStore) GetDataset(queryEngine string, tag string) (*datamodel.Query
 	return bigqueryData, nil
 }
 
+// GetQueryEngines gets the query engines.
 func (b *BoltStore) GetQueryEngines() ([]datamodel.QueryEngine, error) {
 	tx, err := b.db.Begin(false)
 	if err != nil {
@@ -142,6 +145,7 @@ func (b *BoltStore) GetQueryEngines() ([]datamodel.QueryEngine, error) {
 	return queryEngines, nil
 }
 
+// NewBoltStore creates a new BoltStore.
 func NewBoltStore(cfg *common.Config) (*BoltStore, error) {
 	db, err := bolt.Open(cfg.LocalStore.Bolt.Path, 0600, nil)
 	if err != nil {

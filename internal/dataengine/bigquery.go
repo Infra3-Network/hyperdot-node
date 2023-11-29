@@ -1,22 +1,26 @@
 package dataengine
 
 import (
-	"cloud.google.com/go/bigquery"
 	"context"
 	"errors"
 	"fmt"
+
+	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
 )
 
+// BigQueryEngineConfig is the config for bigquery engine.
 type BigQueryEngineConfig struct {
 	ProjectId string `json:"projectId"`
 }
 
+// BigQueryEngine is the query engine for bigquery.
 type BigQueryEngine struct {
 	ctx    context.Context
 	client *bigquery.Client
 }
 
+// NewBigQueryEngine creates a new bigquery engine.
 func NewBigQueryEngine(cfg interface{}) (*BigQueryEngine, error) {
 	v, ok := cfg.(*BigQueryEngineConfig)
 	if !ok {
@@ -32,6 +36,7 @@ func NewBigQueryEngine(cfg interface{}) (*BigQueryEngine, error) {
 	return &BigQueryEngine{ctx: ctx, client: client}, nil
 }
 
+// Run executes a query and return a row iterator.
 func (bq *BigQueryEngine) Run(ctx context.Context, query string) (RowIterator, error) {
 	q := bq.client.Query(query)
 	job, err := q.Run(ctx)
@@ -54,10 +59,12 @@ func (bq *BigQueryEngine) Run(ctx context.Context, query string) (RowIterator, e
 	return &BigQueryEngineRowIter{iter: iter}, nil
 }
 
+// BigQueryEngineRowIter is the row iterator for bigquery.
 type BigQueryEngineRowIter struct {
 	iter *bigquery.RowIterator
 }
 
+// Schema returns the schema of the rows.
 func (b BigQueryEngineRowIter) Schema() []*FieldSchema {
 	res := make([]*FieldSchema, len(b.iter.Schema))
 	for i, filed := range b.iter.Schema {
@@ -72,6 +79,7 @@ func (b BigQueryEngineRowIter) Schema() []*FieldSchema {
 	return res
 }
 
+// Next returns the next row.  If there are no more rows, it returns IterDone.
 func (b BigQueryEngineRowIter) Next() (map[string]interface{}, error) {
 	var row map[string]bigquery.Value
 	err := b.iter.Next(&row)
@@ -89,6 +97,7 @@ func (b BigQueryEngineRowIter) Next() (map[string]interface{}, error) {
 	return res, nil
 }
 
+// TotalRows returns the total number of rows in the iterator.
 func (b BigQueryEngineRowIter) TotalRows() uint64 {
 	return b.iter.TotalRows
 }

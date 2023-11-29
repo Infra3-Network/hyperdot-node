@@ -12,6 +12,7 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
+// SimpleBigQueryClient wrap bigquery client and provide simple query method
 type SimpleBigQueryClient struct {
 	bigquery *bigquery.Client
 }
@@ -32,6 +33,7 @@ func NewSimpleBigQueryClient(ctx context.Context, cfg *common.Config) (*SimpleBi
 	}, nil
 }
 
+// Statistics returns statistics of a bigquery
 func (s *SimpleBigQueryClient) Statistics(ctx context.Context, q string) (*bigquery.JobStatistics, error) {
 	query := s.bigquery.Query(q)
 	query.DryRun = true
@@ -50,6 +52,7 @@ func (s *SimpleBigQueryClient) Statistics(ctx context.Context, q string) (*bigqu
 	return status.Statistics, nil
 }
 
+// Query executes a query and return a row iterator
 func (s *SimpleBigQueryClient) Query(ctx context.Context, q string) (*bigquery.RowIterator, error) {
 	query := s.bigquery.Query(q)
 	job, err := query.Run(ctx)

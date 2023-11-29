@@ -16,10 +16,12 @@ const (
 	todoSecret          = "hyperdot"
 )
 
+// TokenDefaultExpireTime returns the default expire time of a token.
 func TokenDefaultExpireTime() time.Time {
 	return time.Now().Add(time.Hour * 24)
 }
 
+// GenerateJwtToken generates a jwt token.
 func GenerateJwtToken(claims *datamodel.UserClaims, expireAt time.Time) (string, error) {
 	claims.RegisteredClaims = jwt.RegisteredClaims{
 		Issuer:    TokenIssuer,
@@ -31,6 +33,7 @@ func GenerateJwtToken(claims *datamodel.UserClaims, expireAt time.Time) (string,
 	return token.SignedString([]byte(todoSecret)) // TODO: use generate
 }
 
+// VerifyJwtToken verifies a jwt token.
 func VerifyJwtToken(tokenString string) (*datamodel.UserClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &datamodel.UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

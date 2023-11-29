@@ -10,12 +10,14 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/common"
 )
 
+// JobManager is controller of all jobs and can timing execute jobs
 type JobManager struct {
 	total          *atomic.Uint64
 	cfg            common.Config
 	bigquerySyncer *BigQuerySyncer
 }
 
+// NewJobManager creates a new JobManager
 func NewJobManager(cfg *common.Config) *JobManager {
 	total := atomic.Uint64{}
 	total.Store(0)
@@ -25,6 +27,9 @@ func NewJobManager(cfg *common.Config) *JobManager {
 	}
 }
 
+// Init initializes the job manager
+// It starts theses jobs
+//  1. bigquery syncer
 func (j *JobManager) Init(boltStore *store.BoltStore) (err error) {
 	if j.bigquerySyncer, err = NewBigQuerySyncer(&j.cfg, boltStore); err != nil {
 		return
@@ -40,10 +45,12 @@ func (j *JobManager) Init(boltStore *store.BoltStore) (err error) {
 	return err
 }
 
+// Start starts the job manager
 func (j *JobManager) Start() <-chan bool {
 	return gocron.Start()
 }
 
+// Stop stops the job manager
 func (j *JobManager) Stop() {
 	gocron.Clear()
 }

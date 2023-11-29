@@ -7,11 +7,15 @@ import (
 	"infra-3.xyz/hyperdot-node/internal/datamodel"
 )
 
+// EngineCache is a cache for query engine datasets.
+// It is used to store the datasets of query engines and
+// provide a way to get the datasets by query engine and tag.
 type EngineCache struct {
 	tags map[string]map[string]*datamodel.QueryEngineDatasetInfo
 	lock *sync.RWMutex
 }
 
+// NewDataEngineCache creates a new EngineCache.
 func NewDataEngineCache() *EngineCache {
 	return &EngineCache{
 		tags: make(map[string]map[string]*datamodel.QueryEngineDatasetInfo),
@@ -19,8 +23,10 @@ func NewDataEngineCache() *EngineCache {
 	}
 }
 
+// GlobalDataEngine is a global static EngineCache object.
 var GlobalDataEngine = NewDataEngineCache()
 
+// SetDatasets sets the datasets of a query engine.
 func (e *EngineCache) SetDatasets(queryEngine string, datasets *datamodel.QueryEngineDatasets) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -32,6 +38,7 @@ func (e *EngineCache) SetDatasets(queryEngine string, datasets *datamodel.QueryE
 
 }
 
+// GetDatasets gets the datasets of a query engine by tag.
 func (e *EngineCache) GetDatasets(queryEngine string, tag string) (*datamodel.QueryEngineDatasetInfo, error) {
 	e.lock.RLock()
 	defer e.lock.RUnlock()

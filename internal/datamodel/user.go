@@ -102,6 +102,8 @@ func (UserModel) TableName() string {
 	return "hyperdot_user"
 }
 
+// UserStatistics hyperdot_user_statistics table and it store
+// user's statistics information.
 type UserStatistics struct {
 	ID         uint `json:"id" gorm:"primarykey"`
 	UserId     uint `json:"user_id" gorm:"index:idx_user_statistics_user_id"`
@@ -114,6 +116,7 @@ func (UserStatistics) TableName() string {
 	return "hyperdot_user_statistics"
 }
 
+// UserQuery user's query model and it store user's query information.
 type UserDashboardFavorites struct {
 	UserID          uint      `json:"user_id" gorm:"index:idx_user_dashboard_favorites_user_id"`
 	DashboardID     uint      `json:"dashboard_id" gorm:"index:idx_user_dashboard_favorites_dashboard_id"`
@@ -127,6 +130,7 @@ func (UserDashboardFavorites) TableName() string {
 	return "hyperdot_user_dashboard_favorites"
 }
 
+// UserQuery user's query model and it store user's query information.
 type UserQueryFavorites struct {
 	ID          uint      `json:"id" gorm:"primarykey"`
 	UserID      uint      `json:"user_id" gorm:"index:idx_user_query_favorites_user_id"`

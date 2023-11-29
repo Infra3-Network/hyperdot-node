@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// BigQueryName is the name of bigquery engine.
 	BigQueryName = "bigquery"
 )
 
@@ -31,20 +32,28 @@ type FieldSchema struct {
 	Type string `json:"type"`
 }
 
+// IterDone is returned by RowIterator.Next when there are no more items.
 var IterDone = errors.New("no more items in iterator")
 
+// RowIterator iterates over a set of rows.
 type RowIterator interface {
+	// Schema returns the schema of the rows.
 	Schema() []*FieldSchema
 
+	// Next returns the next row.  If there are no more rows, it returns IterDone.
 	Next() (map[string]interface{}, error)
 
+	// TotalRows returns the total number of rows in the iterator.
 	TotalRows() uint64
 }
 
+// QueryEngine is the interface for query engine.
 type QueryEngine interface {
+	// Run executes a query and return a row iterator.
 	Run(ctx context.Context, query string) (RowIterator, error)
 }
 
+// Make creates a new query engine by given engine name and config.
 func Make(engine string, cfg interface{}) (QueryEngine, error) {
 	switch engine {
 	case BigQueryName:

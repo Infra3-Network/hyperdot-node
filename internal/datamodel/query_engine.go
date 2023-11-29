@@ -17,6 +17,7 @@ var (
 	BigQueryRawPolkadotTablesKey = "bigquery:polkadot:raw:tables"
 )
 
+// RelayChainMetadata is the metadata of a relay chain. such as polkadot, kusama, etc.
 type RelayChainMetadata struct {
 	ChainID      uint   `json:"chainID"`
 	Name         string `json:"name"`
@@ -24,6 +25,7 @@ type RelayChainMetadata struct {
 	ParaChainIDs []uint `json:"paraChainIDs"`
 }
 
+// QueryEngineDatasetInfo is the metadata of a query engine dataset.
 type QueryEngineDatasetInfo struct {
 	Id          string                         `json:"id"`
 	Chains      map[uint]ChainModel            `json:"chains"`
@@ -31,6 +33,7 @@ type QueryEngineDatasetInfo struct {
 	ChainTables map[int][]Table                `json:"chainTables"`
 }
 
+// WriteToRedis writes the dataset info to redis.
 func (q *QueryEngineDatasetInfo) WriteToRedis(ctx context.Context, cfg *common.RedisConfig, engine string) error {
 	// set raw
 	raw := q
@@ -98,22 +101,26 @@ func (q *QueryEngineDatasetInfo) WriteToRedis(ctx context.Context, cfg *common.R
 	return nil
 }
 
+// QueryEngineDatasets is the metadata of query engine datasets.
 type QueryEngineDatasets struct {
 	// Raw is raw blockchain data
 	Raw *QueryEngineDatasetInfo `json:"raw"`
 }
 
+// QueryEngineDatasetMetadata is the metadata of a query engine dataset.
 type QueryEngineDatasetMetadata struct {
 	Id          string `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
 
+// QueryEngine is the metadata of a query engine.
 type QueryEngine struct {
 	Name     string                                `json:"name"`
 	Datasets map[string]QueryEngineDatasetMetadata `json:"datasets"`
 }
 
+// InitQueryEngineMetadata initializes the metadata of query engines.
 func InitQueryEngineMetadata(ctx context.Context, redisClient *redis.Client) error {
 	// write to redis
 	engines := []QueryEngine{

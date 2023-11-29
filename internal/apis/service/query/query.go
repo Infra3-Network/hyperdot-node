@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"infra-3.xyz/hyperdot-node/internal/apis/base"
-	"infra-3.xyz/hyperdot-node/internal/cache"
 	"infra-3.xyz/hyperdot-node/internal/clients"
 	"infra-3.xyz/hyperdot-node/internal/common"
 	"infra-3.xyz/hyperdot-node/internal/dataengine"
@@ -44,87 +42,6 @@ func New(bboltStore *store.BoltStore, cfg *common.Config, db *gorm.DB, engines m
 		bboltStore:     bboltStore,
 		bigqueryClient: bigqueryClient,
 		engines:        engines,
-	}
-}
-
-func (s *Service) ListEnginesHandle() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		// get query engines from bolt
-		data, err := s.bboltStore.GetQueryEngines()
-		if err != nil {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: err.Error(),
-			})
-			return
-		}
-
-		ctx.JSON(200, base.ListEngineResponse{
-			BaseResponse: base.ResponseOk(),
-			Data:         data,
-		})
-	}
-}
-
-func (s *Service) GetQueryEngineDatasetHandle() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		// get :engineId
-		engineId := ctx.Param("engineId")
-		if len(engineId) == 0 {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: "engineId is empty",
-			})
-			return
-		}
-
-		// get :datasetId
-		datasetId := ctx.Param("datasetId")
-		if len(datasetId) == 0 {
-			ctx.JSON(200, base.BaseResponse{
-				ErrorCode:    base.Err,
-				ErrorMessage: "datasetId is empty",
-			})
-			return
-		}
-
-		engineId = strings.ToLower(engineId)
-		datasetId = strings.ToLower(datasetId)
-
-		var err error
-		var data *datamodel.QueryEngineDatasetInfo
-		data, err = cache.GlobalDataEngine.GetDatasets(engineId, datasetId)
-		if err != nil || data == nil {
-			data, err = s.bboltStore.GetDataset(engineId, datasetId)
-			if err != nil {
-				ctx.JSON(200, base.BaseResponse{
-					ErrorCode:    base.Err,
-					ErrorMessage: err.Error(),
-				})
-				return
-			}
-		}
-
-		chainTables := make(map[int][]string)
-		for chainID, tables := range data.ChainTables {
-			for _, table := range tables {
-				chainTables[chainID] = append(chainTables[chainID], table.TableID)
-			}
-		}
-		// ctx.JSON(200, base.GetQueryEngineDatasetResponse{
-		// 	BaseResponse: base.ResponseOk(),
-		// 	Data: struct {
-		// 		Id          string                                   `json:"id"`
-		// 		Chains      map[int]datamodel.Chain                  `json:"chains"`
-		// 		RelayChains map[string]*datamodel.RelayChainMetadata `json:"relayChains"`
-		// 		ChainTables map[int][]string                         `json:"chainTables"`
-		// 	}(struct {
-		// 		Id          string
-		// 		Chains      map[int]datamodel.Chain
-		// 		RelayChains map[string]*datamodel.RelayChainMetadata
-		// 		ChainTables map[int][]string
-		// 	}{Id: data.Id, Chains: data.Chains, RelayChains: data.RelayChains, ChainTables: chainTables}),
-		// })
 	}
 }
 
